@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -94,113 +93,6 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func SetGPIODebug() {
-	err := ioutil.WriteFile("/sys/class/gpio/export", []byte("2"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("3"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("13"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("15"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("10"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("0"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("1"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("16"), 0200)
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-}
-
-func GetGPIOStatus() {
-	readFile, err := os.Open("/sys/kernel/debug/gpio")
-	//readFile, err := os.Open("FakeKernel.txt")
-	if err != nil {
-		log.Fatalf("failed to open file: %s", err)
-	}
-
-	fileScanner := bufio.NewScanner(readFile)
-	fileScanner.Split(bufio.ScanLines)
-	var fileTextLines []string
-
-	for fileScanner.Scan() {
-		fileTextLines = append(fileTextLines, fileScanner.Text())
-	}
-
-	readFile.Close()
-
-	for _, eachline := range fileTextLines {
-		s := strings.Fields(eachline)
-		if len(s) > 3 {
-			GPIO[s[0]] = s[4]
-		}
-
-	}
-	if len(GPIO) > 1 {
-		fmt.Println(GPIO)
-		if GPIO["gpio-0"] == "lo" && GPIO["gpio-1"] == "lo" && GPIO["gpio-16"] == "hi" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-		}
-		if GPIO["gpio-0"] == "hi" || GPIO["gpio-1"] == "hi" || GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("low"), 644)
-		}
-		if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-		}
-		if GPIO["gpio-0"] == "hi" && GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-		}
-		if GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-		}
-		if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-			cmd := exec.Command("fwupdate", "sw")
-			out, err := cmd.CombinedOutput()
-			fmt.Println(out)
-			cmd = exec.Command("sync")
-			out, err = cmd.CombinedOutput()
-			fmt.Println(out)
-			cmd = exec.Command("reboot")
-			out, err = cmd.CombinedOutput()
-			fmt.Println(out)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-		}
-		if GPIO["gpio-10"] == "hi" {
-			err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("low"), 644)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-		}
-		if GPIO["gpio-10"] == "lo" {
-			err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("high"), 644)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-		}
-
-	}
-	if err != nil {
-		fmt.Println(err)
-	}
-	time.Sleep(time.Nanosecond * 500000000)
-
-}
-
 func ReadConfig() Config {
 
 	_, err := os.Stat(configfile)
@@ -246,23 +138,6 @@ func UpdateConfig(configfile string) bool {
 	return true
 }
 
-func EncodeTopicsToTOML(topnr int, data TopicData) {
-	f, err := os.Create(fmt.Sprintf("data/%d", topnr))
-	if err != nil {
-		// failed to create/open the file
-		log.Fatal(err)
-	}
-	if err := toml.NewEncoder(f).Encode(data); err != nil {
-		// failed to encode
-		log.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
-		// failed to close the file
-		log.Fatal(err)
-
-	}
-
-}
 func UpdatePassword() bool {
 	_, err = os.Stat("/mnt/usb/GoHeishaMonPassword.new")
 	if err != nil {
@@ -270,7 +145,7 @@ func UpdatePassword() bool {
 	} else {
 		_, _ = exec.Command("chmod", "+x", "/root/pass.sh").Output()
 		dat, _ := ioutil.ReadFile("/mnt/usb/GoHeishaMonPassword.new")
-		fmt.Printf("updejtuje haslo na: %s", string(dat))
+		fmt.Printf("updates the password to: %s", string(dat))
 		o, err := exec.Command("/root/pass.sh", string(dat)).Output()
 		if err != nil {
 			fmt.Println(err)
@@ -337,7 +212,7 @@ func PublishTopicsToAutoDiscover(mclient mqtt.Client, token mqtt.Token) {
 
 		fmt.Println(err)
 		TOP := fmt.Sprintf("%s/%s/%s/config", config.Mqtt_topic_base, v.TopicType, strings.ReplaceAll(m.Name, " ", "_"))
-		fmt.Println("Publikuje do ", TOP, "warosc", string(Topic_Value))
+		fmt.Println("It publishes to ", TOP, "warosc", string(Topic_Value))
 		token = mclient.Publish(TOP, byte(0), false, Topic_Value)
 		if token.Wait() && token.Error() != nil {
 			fmt.Printf("Fail to publish, %v", token.Error())
@@ -356,7 +231,7 @@ func PublishTopicsToAutoDiscover(mclient mqtt.Client, token mqtt.Token) {
 
 		fmt.Println(err)
 		TOP := fmt.Sprintf("%s/%s/%s/config", config.Mqtt_topic_base, "switch", strings.ReplaceAll(vs.Name, " ", "_"))
-		fmt.Println("Publikuje do ", TOP, "warosc", string(Topic_Value))
+		fmt.Println("It publishes to ", TOP, "warosc", string(Topic_Value))
 		token = mclient.Publish(TOP, byte(0), false, Topic_Value)
 		if token.Wait() && token.Error() != nil {
 			fmt.Printf("Fail to publish, %v", token.Error())
@@ -378,115 +253,6 @@ type AutoDiscoverStruct struct {
 	Optimistic    string `json:"optimistic,omitempty"`
 	StateON       string `json:"state_on,omitempty"`
 	StateOff      string `json:"state_off,omitempty"`
-}
-
-func UpdateGPIOStat() {
-
-	// watcher := gpio.NewWatcher()
-	// //watcher.AddPin(0)
-	// watcher.AddPin(1)
-	// watcher.AddPin(2)
-	// watcher.AddPin(3)
-	// watcher.AddPin(4)
-	// watcher.AddPin(5)
-	// watcher.AddPin(6)
-	// watcher.AddPin(7)
-	// watcher.AddPin(8)
-	// watcher.AddPin(9)
-	// watcher.AddPin(10)
-	// watcher.AddPin(11)
-	// watcher.AddPin(12)
-	// watcher.AddPin(13)
-	// watcher.AddPin(14)
-	// watcher.AddPin(15)
-	// watcher.AddPin(16)
-
-	// defer watcher.Close()
-
-	// go func() {
-	// 	var v string
-	// 	for {
-	// 		pin, value := watcher.Watch()
-	// 		if value == 1 {
-	// 			v = "hi"
-	// 		} else {
-	// 			v = "lo"
-	// 		}
-	// 		GPIO[fmt.Sprintf("gpio-%d", pin)] = v
-	// 		fmt.Printf("read %d from gpio %d\n", value, pin)
-	// 	}
-	// }()
-
-	GPIO = make(map[string]string)
-	SetGPIODebug()
-	for {
-		GetGPIOStatus()
-		//time.Sleep(time.Nanosecond * 500000000)
-	}
-}
-
-func ExecuteGPIOCommand() {
-	for {
-		var err error
-		if len(GPIO) > 1 {
-			fmt.Println(GPIO)
-			if GPIO["gpio-0"] == "lo" && GPIO["gpio-1"] == "lo" && GPIO["gpio-16"] == "hi" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-			}
-			if GPIO["gpio-0"] == "hi" || GPIO["gpio-1"] == "hi" || GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("low"), 644)
-			}
-			if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-			}
-			if GPIO["gpio-0"] == "hi" && GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-			}
-			if GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-			}
-			if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
-				cmd := exec.Command("fwupdate", "sw")
-				out, err := cmd.CombinedOutput()
-				fmt.Println(out)
-				cmd = exec.Command("sync")
-				out, err = cmd.CombinedOutput()
-				fmt.Println(out)
-				cmd = exec.Command("reboot")
-				out, err = cmd.CombinedOutput()
-				fmt.Println(out)
-				fmt.Println(err)
-
-			}
-			if GPIO["gpio-10"] == "hi" {
-				err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("low"), 644)
-				fmt.Println(err)
-
-			}
-			if GPIO["gpio-10"] == "lo" {
-				err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("high"), 644)
-				fmt.Println(err)
-
-			}
-
-		}
-		//time.Sleep(time.Nanosecond * 500000000)
-		fmt.Println(err)
-
-	}
 }
 
 func main() {
@@ -550,7 +316,7 @@ func main() {
 			MC, MT = MakeMQTTConn()
 		}
 		if len(CommandsToSend) > 0 {
-			fmt.Println("jest wiecej niz jedna komenda tj", len(CommandsToSend))
+			fmt.Println("there is more than one command ie", len(CommandsToSend))
 			in = 1
 			for key, value := range CommandsToSend {
 				if in == 1 {
@@ -561,10 +327,10 @@ func main() {
 					time.Sleep(time.Second * time.Duration(config.SleepAfterCommand))
 
 				} else {
-					fmt.Println("numer komenty  ", in, " jest za duzy zrobie to w nastepnym cyklu")
+					fmt.Println("comment number  ", in, " is too big I will do it in the next cycle")
 					break
 				}
-				fmt.Println("koncze range po tablicy z komendami ")
+				fmt.Println("conclude range after command table ")
 
 			}
 
@@ -1036,21 +802,6 @@ func calcChecksum(command []byte, length int) byte {
 	return chk
 }
 
-func ParseTopicList2() {
-
-	// Loop through lines & turn into object
-	for key, _ := range AllTopics {
-		var data TopicData
-		if _, err := toml.DecodeFile(configfile, &data); err != nil {
-			log.Fatal(err)
-		}
-		AllTopics[key] = data
-		//a	fmt.Println(data)
-		//EncodeTopicsToTOML(TNUM, data)
-
-	}
-}
-
 func send_command(command []byte, length int) bool {
 
 	var chk byte
@@ -1328,7 +1079,7 @@ func decode_heatpump_data(data []byte, mclient mqtt.Client, token mqtt.Token) {
 			if _, ok := m[v.TopicFunction]; ok {
 				Topic_Value = CallTopicFunction(Input_Byte, m[v.TopicFunction])
 			} else {
-				fmt.Println("NIE MA FUNKCJI", v.TopicFunction)
+				fmt.Println("NO FUNCTIONS", v.TopicFunction)
 			}
 
 		}
@@ -1340,14 +1091,14 @@ func decode_heatpump_data(data []byte, mclient mqtt.Client, token mqtt.Token) {
 				TOP := "aquarea/state/" + fmt.Sprintf("%s/%s", config.Aquarea2mqttPumpID, v.TopicA2M)
 				value = strings.TrimSpace(Topic_Value)
 				value = strings.ToUpper(Topic_Value)
-				fmt.Println("Publikuje do ", TOP, "warosc", string(value))
+				fmt.Println("It publishes to ", TOP, "warosc", string(value))
 				token = mclient.Publish(TOP, byte(0), false, value)
 				if token.Wait() && token.Error() != nil {
 					fmt.Printf("Fail to publish, %v", token.Error())
 				}
 			}
 			TOP := fmt.Sprintf("%s/%s", config.Mqtt_topic_base, v.TopicName)
-			fmt.Println("Publikuje do ", TOP, "warosc", string(Topic_Value))
+			fmt.Println("It publishes to ", TOP, "warosc", string(Topic_Value))
 			token = mclient.Publish(TOP, byte(0), false, Topic_Value)
 			if token.Wait() && token.Error() != nil {
 				fmt.Printf("Fail to publish, %v", token.Error())
