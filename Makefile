@@ -11,6 +11,8 @@ BINARY_UNIX=$(BINARY_NAME)_AMD64
 BINARY_MIPS=$(BINARY_NAME)_MIPS
 BINARY_ARM=$(BINARY_NAME)_ARM
 BINARY_MIPSUPX=$(BINARY_NAME)_MIPSUPX
+KERNEL_IMAGE=
+SQUASHFS_IMAGE=openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin
 
 .DEFAULT: help
 help:	## show this help menu.
@@ -64,13 +66,15 @@ upx:    ## package binary
 upx:
 	upx -f --brute -o dist/$(BINARY_MIPSUPX) dist/$(BINARY_MIPS)
 
-install:    ## install in TARGET_HOST
-install:
-	scp dist/GoHeishaMon_MIPSUPX root@${TARGET_HOST}:/usr/bin/
-	ssh root@${TARGET_HOST} reboot
-
 compilesquash: ## create root file system
 compilesquash:
 	cp dist/$(BINARY_MIPSUPX) OS/RootFS/usr/bin/$(BINARY_MIPSUPX)
-	mksquashfs OS/RootFS dist/openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin -comp xz -noappend -always-use-fragments
+	mksquashfs OS/RootFS dist/$(SQUASHFS_IMAGE) -comp xz -noappend -always-use-fragments
+
+install:    ## install in TARGET_HOST. Not tested.
+install: compilesquash
+install:
+	scp -O OS/Kernel/$(KERNEL_IMAGE) root@$(TARGET_HOST):/tmp/
+	scp -O dist/$(SQUASHFS_IMAGE) root@$(TARGET_HOST):/tmp/
+	ssh root@$(TARGET_HOST) fwupdate fw-write /tmp/$(KERNEL_IMAGE) /tmp/$(SQUASHFS_IMAGE)
 
