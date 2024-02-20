@@ -184,6 +184,12 @@ Change NTP servers to your preferred ones.
 
 Screenshot from Homeassistant: ![Screenshot from Homeassistant](PompaCieplaScreen.PNG)
 
+### Important files
+
+- `OS/RootFS/etc/gh/nextboot.sh`
+- `OS/RootFS/etc/rc.local`
+- `OS/RootFS/usr/bin/check_buttons.sh`
+
 ## TODO
 
 - queue command from a2wmain
