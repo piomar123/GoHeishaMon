@@ -46,7 +46,7 @@ deps:
 	$(GOGET) go.bug.st/serial
 	$(GOGET) github.com/BurntSushi/toml
 	$(GOGET) github.com/rs/xid
-	mkdir dist
+	mkdir -p dist
 
 build-linux:    ## build for linux
 build-linux:
@@ -74,3 +74,5 @@ compilesquash:
 	cp dist/$(BINARY_MIPSUPX) OS/RootFS/usr/bin/$(BINARY_MIPSUPX)
 	mksquashfs OS/RootFS dist/openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin -comp xz -noappend -always-use-fragments
 
+compile-plain-squashfs:
+	mksquashfs OS/RootFS dist/openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin -comp xz -noappend -always-use-fragments
