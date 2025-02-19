@@ -4,6 +4,7 @@ Loghex=true
 ReadInterval=1
 Aquarea2mqttCompatible=false
 Aquarea2mqttPumpID=""
+Mqtt_base="panasonic_heat_pump"
 Mqtt_topic_base="panasonic_heat_pump/main"
 Mqtt_set_base="panasonic_heat_pump/commands"
 ForceRefreshTime=300

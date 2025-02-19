@@ -70,6 +70,7 @@ type Config struct {
 	MqttPort               string
 	MqttLogin              string
 	Aquarea2mqttCompatible bool
+	Mqtt_base              string
 	Mqtt_topic_base        string
 	Mqtt_set_base          string
 	Aquarea2mqttPumpID     string
@@ -605,7 +606,7 @@ func MakeMQTTConn() (mqtt.Client, mqtt.Token) {
 	opts.SetPassword(config.MqttPass)
 	opts.SetUsername(config.MqttLogin)
 	opts.SetClientID(config.MqttClientID)
-	opts.SetWill(config.Mqtt_set_base+"/LWT", "Offline", 1, true)
+	opts.SetWill(config.Mqtt_base+"/LWT", "Offline", 1, true)
 	opts.SetKeepAlive(MqttKeepalive)
 	opts.SetOnConnectHandler(startsub)
 	opts.SetConnectionLostHandler(connLostHandler)
@@ -1134,7 +1135,7 @@ func readSerial(MC mqtt.Client, MT mqtt.Token) bool {
 	log_msg := fmt.Sprintf("Total reads : %f and total good reads : %f (%.2f %%)", totalreads, goodreads, readpercentage)
 	log_message(log_msg)
 	decode_heatpump_data(data, MC, MT)
-	token := MC.Publish(fmt.Sprintf("%s/LWT", config.Mqtt_set_base), byte(0), false, "Online")
+	token := MC.Publish(fmt.Sprintf("%s/LWT", config.Mqtt_base), byte(0), false, "Online")
 	if token.Wait() && token.Error() != nil {
 		fmt.Printf("Fail to publish, %v", token.Error())
 	}
