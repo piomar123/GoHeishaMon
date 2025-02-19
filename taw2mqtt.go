@@ -491,8 +491,10 @@ func ExecuteGPIOCommand() {
 }
 
 func main() {
+	fmt.Println("Starting GoHeishaMon")
 	SwitchTopics = make(map[string]AutoDiscoverStruct)
 
+	fmt.Println("Parsing command-line flags")
 	//	cfgfile = flag.String("c", "config", "a config file patch")
 	//	topicfile = flag.String("t", "Topics.csv", "a topic file patch")
 	flag.Parse()
@@ -509,12 +511,15 @@ func main() {
 		fmt.Printf("Config file is missing: %s ", configfile)
 		UpdateConfig(configfile)
 	}
+	fmt.Println("Starting UpdateConfigLoop")
 	go UpdateConfigLoop(configfile)
 	c1 := make(chan bool, 1)
 	go ClearActData()
 	CommandsToSend = make(map[xid.ID][]byte)
 	var in int
+	fmt.Printf("Reading config from: %s", configfile)
 	config = ReadConfig()
+	fmt.Printf("%+v\n", config)
 	// if config.Readonly != true {
 	// 	log_message("Not sending this command. Heishamon in listen only mode! - this POC version don't support writing yet....")
 	// 	os.Exit(0)
