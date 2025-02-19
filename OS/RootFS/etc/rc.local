@@ -13,6 +13,8 @@ logger -t rc.local "Execute nextboot.sh"
 logger -t rc.local "Clean nextboot.sh"
 echo "" > /etc/gh/nextboot.sh
 
+/usr/sbin/dropbear &
+
 logger -t rc.local "Start GoHeishaMon"
 /usr/bin/GoHeishaMon_MIPSUPX > /dev/ttyS0
 
