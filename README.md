@@ -190,6 +190,12 @@ Screenshot from Homeassistant: ![Screenshot from Homeassistant](PompaCieplaScree
 - `OS/RootFS/etc/rc.local`
 - `OS/RootFS/usr/bin/check_buttons.sh`
 
+### Check logs
+
+```bash
+logread
+```
+
 ## TODO
 
 - queue command from a2wmain
