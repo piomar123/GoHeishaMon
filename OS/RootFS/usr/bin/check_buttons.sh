@@ -48,7 +48,7 @@ while true; do
         echo high > /sys/class/gpio/gpio15/direction
         logger -t check_buttons.sh "Restart GoHeishaMon"
         kill $(ps | grep "$GOHEISHAMON_BIN" | head -n1 | awk '{ print $1 }')
-        $GOHEISHAMON_BIN > /dev/ttyS0 &
+        $GOHEISHAMON_BIN | logger -t goheishamon &
     fi
 
     # fw side switch
