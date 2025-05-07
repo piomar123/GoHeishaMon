@@ -1,6 +1,6 @@
 # Changelog
 
-## To be released
+## 1.1.0
 
 - Add TLS support to MQTT
 - Change config path to `/etc/config/goheishamon.toml`
