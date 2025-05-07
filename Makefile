@@ -68,7 +68,7 @@ upx:
 
 compilesquash: ## create root file system
 compilesquash:
-	cp dist/$(BINARY_MIPSUPX) OS/RootFS/usr/bin/$(BINARY_MIPSUPX)
+	cp dist/$(BINARY_MIPSUPX) OS/RootFS/usr/bin/goheishamon
 	mksquashfs OS/RootFS dist/$(SQUASHFS_IMAGE) -comp xz -noappend -always-use-fragments
 
 install:    ## install in TARGET_HOST. Not tested.
