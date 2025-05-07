@@ -64,6 +64,10 @@ build-rpi:
 
 upx:    ## package binary
 upx:
+	@if !upx 2>&1 | grep "UPX 4." > /dev/null; then \
+		echo "UPX 4.x is required. Newer version are not supported on current Kernel version;" \
+		exit 1; \
+	fi
 	upx -f --brute -o dist/$(BINARY_MIPSUPX) dist/$(BINARY_MIPS)
 
 compilesquash: ## create root file system
