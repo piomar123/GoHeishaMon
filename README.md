@@ -197,7 +197,3 @@ Screenshot from Homeassistant: ![Screenshot from Homeassistant](PompaCieplaScree
 ```bash
 logread
 ```
-
-## TODO
-
-- TLS for MQTT

@@ -2,6 +2,7 @@
 
 ## To be released
 
+- Add TLS support to MQTT
 - Change config path to `/etc/config/goheishamon.toml`
 - Add install target in Makefile for upgrade process
 - Implement a buffer for serial communication to fix wrong header error

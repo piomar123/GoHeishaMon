@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -62,24 +64,29 @@ type TopicData struct {
 }
 
 type Config struct {
-	Readonly               bool
-	Loghex                 bool
-	Device                 string
-	ReadInterval           int
-	MqttServer             string
-	MqttPort               string
-	MqttLogin              string
-	Aquarea2mqttCompatible bool
-	Mqtt_topic_base        string
-	Mqtt_set_base          string
-	Aquarea2mqttPumpID     string
-	MqttPass               string
-	MqttClientID           string
-	MqttKeepalive          int
-	ForceRefreshTime       int
-	EnableCommand          bool
-	SleepAfterCommand      int
-	HAAutoDiscover         bool
+    Readonly               bool
+    Loghex                 bool
+    Device                 string
+    ReadInterval           int
+    MqttServer             string
+    MqttPort               string
+    MqttLogin              string
+    Aquarea2mqttCompatible bool
+    Mqtt_topic_base        string
+    Mqtt_set_base          string
+    Aquarea2mqttPumpID     string
+    MqttPass               string
+    MqttClientID           string
+    MqttKeepalive          int
+    MqttUseTLS             bool
+    MqttTLSInsecure        bool
+    MqttCaCertFile         string
+    MqttClientCertFile     string
+    MqttClientKeyFile      string
+    ForceRefreshTime       int
+    EnableCommand          bool
+    SleepAfterCommand      int
+    HAAutoDiscover         bool
 }
 
 var cfgfile *string
@@ -358,29 +365,65 @@ func ClearActData() {
 }
 
 func MakeMQTTConn() (mqtt.Client, mqtt.Token) {
-	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("%s://%s:%s", "tcp", config.MqttServer, config.MqttPort))
-	opts.SetPassword(config.MqttPass)
-	opts.SetUsername(config.MqttLogin)
-	opts.SetClientID(config.MqttClientID)
-	opts.SetWill(config.Mqtt_set_base+"/LWT", "Offline", 1, true)
-	opts.SetKeepAlive(MqttKeepalive)
-	opts.SetOnConnectHandler(startsub)
-	opts.SetConnectionLostHandler(connLostHandler)
+    opts := mqtt.NewClientOptions()
 
-	// connect to broker
-	client := mqtt.NewClient(opts)
-	//defer client.Disconnect(uint(2))
+    protocol := "tcp"
+    if config.MqttUseTLS {
+        protocol = "ssl"
+    }
 
-	token := client.Connect()
-	if token.Wait() && token.Error() != nil {
-		fmt.Printf("Fail to connect broker, %v", token.Error())
-	}
-	return client, token
+    opts.AddBroker(fmt.Sprintf("%s://%s:%s", protocol, config.MqttServer, config.MqttPort))
+    opts.SetPassword(config.MqttPass)
+    opts.SetUsername(config.MqttLogin)
+    opts.SetClientID(config.MqttClientID)
+    opts.SetWill(config.Mqtt_set_base+"/LWT", "Offline", 1, true)
+    opts.SetKeepAlive(MqttKeepalive)
+    opts.SetOnConnectHandler(startsub)
+    opts.SetConnectionLostHandler(connLostHandler)
+
+    if config.MqttUseTLS {
+        tlsConfig := &tls.Config{}
+
+        if config.MqttCaCertFile != "" {
+            caCert, err := ioutil.ReadFile(config.MqttCaCertFile)
+            if err == nil {
+                caCertPool := x509.NewCertPool()
+                caCertPool.AppendCertsFromPEM(caCert)
+                tlsConfig.RootCAs = caCertPool
+            } else {
+                log_message(fmt.Sprintf("Error loading CA certificate: %v", err))
+            }
+        }
+
+        if config.MqttClientCertFile != "" && config.MqttClientKeyFile != "" {
+            cert, err := tls.LoadX509KeyPair(config.MqttClientCertFile, config.MqttClientKeyFile)
+            if err == nil {
+                tlsConfig.Certificates = []tls.Certificate{cert}
+            } else {
+                log_message(fmt.Sprintf("Error loading client certificate/key: %v", err))
+            }
+        }
+
+        if config.MqttTLSInsecure {
+            tlsConfig.InsecureSkipVerify = true
+        }
+
+        opts.SetTLSConfig(tlsConfig)
+    }
+
+    // connect to broker
+    client := mqtt.NewClient(opts)
+    //defer client.Disconnect(uint(2))
+
+    token := client.Connect()
+    if token.Wait() && token.Error() != nil {
+        log_message(fmt.Sprintf("Fail to connect broker, %v", token.Error()))
+    }
+    return client, token
 }
 
 func connLostHandler(c mqtt.Client, err error) {
-	fmt.Printf("Connection lost, reason: %v\n", err)
+	log_message(fmt.Sprintf("Connection lost, reason: %v\n", err))
 
 	//Perform additional action...
 }
