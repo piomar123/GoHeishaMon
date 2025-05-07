@@ -255,7 +255,7 @@ func main() {
 	//	topicfile = flag.String("t", "Topics.csv", "a topic file patch")
 	flag.Parse()
 	if runtime.GOOS != "windows" {
-		configfile = "/etc/gh/config"
+		configfile = "/etc/config/goheishamon.toml"
 
 	} else {
 		configfile = "config"
@@ -854,77 +854,91 @@ func readSerial(MC mqtt.Client, MT mqtt.Token) bool {
 }
 
 func tryParsePackets(buffer *bytes.Buffer, MC mqtt.Client, MT mqtt.Token) bool {
-	const PACKET_LENGTH = 203
-	packetFound := false
+    const PACKET_LENGTH = 203
+    packetFound := false
 
-	// Process as many complete packets as we can find in the buffer
-	for {
-		// Not enough data for a header check yet
-		if buffer.Len() < 4 {
-			return packetFound
-		}
+    // Create a sliding window buffer - initially empty
+    window := make([]byte, 0, 4)
 
-		// Peek at the first 4 bytes to check for valid header
-		headerBytes := make([]byte, 4)
-		_, err := buffer.Read(headerBytes)
-		if err != nil {
-			log.Printf("Error reading header bytes: %v", err)
-			return packetFound
-		}
+    // Process as many complete packets as we can find in the buffer
+    for buffer.Len() > 0 {
+        // Read one byte at a time to build our sliding window
+        b := make([]byte, 1)
+        _, err := buffer.Read(b)
+        if err != nil {
+            log.Printf("Error reading byte: %v", err)
+            return packetFound
+        }
 
-		// If not a valid header, discard the first byte and continue
-		if !isValidHeader(headerBytes) {
-			// Put back 3 valid bytes we read (discard only the first invalid byte)
-			_, _ = buffer.Write(headerBytes[1:])
-			log_message("Invalid header byte discarded")
-			continue
-		}
+        // Add the byte to our window
+        window = append(window, b[0])
 
-		// Found a valid header, now check if we have enough bytes for a full packet
-		if buffer.Len() < (PACKET_LENGTH - 4) {
-			log_message(fmt.Sprintf("Valid header found but need more data. Have %d bytes, waiting for more.", buffer.Len() + 4))
-			// Put the header back so we can read it as part of the full packet later
-			_, _ = buffer.Write(headerBytes)
-			return packetFound
-		}
+        // If we have less than 4 bytes, keep reading
+        if len(window) < 4 {
+            continue
+        }
 
-		// We have a full packet, read it
-		packet := make([]byte, PACKET_LENGTH)
-		// Copy the header we already read
-		copy(packet[0:4], headerBytes)
+        // Keep window at exactly 4 bytes by removing oldest byte when needed
+        if len(window) > 4 {
+            window = window[1:]
+        }
 
-		// Read the rest of the packet
-		n, err := buffer.Read(packet[4:])
-		if err != nil || n != (PACKET_LENGTH - 4) {
-			log.Printf("Error reading full packet: %v", err)
-			return packetFound
-		}
+        // Check if current window is a valid header
+        if !isValidHeader(window) {
+            // Not a valid header, continue reading next byte (sliding the window)
+            continue
+        }
 
-		totalreads++
+        // Found a valid header, now check if we have enough bytes for a full packet
+        if buffer.Len() < (PACKET_LENGTH - 4) {
+            log_message(fmt.Sprintf("Valid header found but need more data. Have %d bytes, waiting for more.", buffer.Len() + 4))
+            // Put the header bytes back so we can read them again later
+            _, _ = buffer.Write(window)
+            return packetFound
+        }
 
-		// Validate the checksum
-		if !isValidChecksum(packet) {
-			log_message("Checksum received false!")
-			continue
-		}
+        // We have a full packet, read it
+        packet := make([]byte, PACKET_LENGTH)
+        // Copy the header we already have
+        copy(packet[0:4], window)
 
-		log_message("Checksum and header received ok!")
-		goodreads++
-		packetFound = true
-		readpercentage = ((goodreads / totalreads) * 100)
+        // Read the rest of the packet
+        n, err := buffer.Read(packet[4:])
+        if err != nil || n != (PACKET_LENGTH - 4) {
+            log.Printf("Error reading full packet: %v", err)
+            return packetFound
+        }
 
-		log_msg := fmt.Sprintf("Total reads: %f and total good reads: %f (%.2f %%)",
-			totalreads, goodreads, readpercentage)
-		log_message(log_msg)
+        // Reset the window for next search
+        window = window[:0]
 
-		// Process valid packet
-		decode_heatpump_data(packet, MC, MT)
+        totalreads++
 
-		token := MC.Publish(fmt.Sprintf("%s/LWT", config.Mqtt_set_base), byte(0), false, "Online")
-		if token.Wait() && token.Error() != nil {
-			fmt.Printf("Fail to publish, %v", token.Error())
-		}
-	}
+        // Rest of packet processing remains the same
+        if !isValidChecksum(packet) {
+            log_message("Checksum received false!")
+            continue
+        }
+
+        log_message("Checksum and header received ok!")
+        goodreads++
+        packetFound = true
+        readpercentage = ((goodreads / totalreads) * 100)
+
+        log_msg := fmt.Sprintf("Total reads: %f and total good reads: %f (%.2f %%)",
+            totalreads, goodreads, readpercentage)
+        log_message(log_msg)
+
+        // Process valid packet
+        decode_heatpump_data(packet, MC, MT)
+
+        token := MC.Publish(fmt.Sprintf("%s/LWT", config.Mqtt_set_base), byte(0), false, "Online")
+        if token.Wait() && token.Error() != nil {
+            fmt.Printf("Fail to publish, %v", token.Error())
+        }
+    }
+
+    return packetFound
 }
 
 // Helper function to validate just the header

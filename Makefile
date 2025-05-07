@@ -11,7 +11,7 @@ BINARY_UNIX=$(BINARY_NAME)_AMD64
 BINARY_MIPS=$(BINARY_NAME)_MIPS
 BINARY_ARM=$(BINARY_NAME)_ARM
 BINARY_MIPSUPX=$(BINARY_NAME)_MIPSUPX
-KERNEL_IMAGE=
+KERNEL_IMAGE=openwrt-ar71xx-generic-cus531-16M-kernel.bin
 SQUASHFS_IMAGE=openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin
 
 .DEFAULT: help
@@ -73,12 +73,36 @@ upx:
 compilesquash: ## create root file system
 compilesquash:
 	cp dist/$(BINARY_MIPSUPX) OS/RootFS/usr/bin/goheishamon
-	mksquashfs OS/RootFS dist/$(SQUASHFS_IMAGE) -comp xz -noappend -always-use-fragments
+	mksquashfs OS/RootFS dist/$(SQUASHFS_IMAGE) -comp xz -noappend -always-use-fragments -force-uid 0 -force-gid 0
 
-install:    ## install in TARGET_HOST. Not tested.
+enable-nextboot: ## enable nextboot.sh script
+enable-nextboot:
+	@cp OS/RootFS/etc/gh/nextboot.sh.disabled OS/RootFS/etc/gh/nextboot.sh
+
+compilesquash-usb: ## create root file system with nextboot.sh script
+compilesquash-usb: enable-nextboot compilesquash
+
+install:    ## install in TARGET_HOST.
 install: compilesquash
 install:
+	@if [ ! -f OS/RootFS/etc/dropbear/authorized_keys ]; then \
+		echo "Warning: Authorized keys file OS/RootFS/etc/dropbear/authorized_keys not found"; \
+		echo "Please copy your public key to this file before updating and change permissions to 600."; \
+	fi
+
+	scp -r -O root@$(TARGET_HOST):/etc/config /tmp/config
+	echo "Backup written to /tmp/config."
+	@if [ ! -f OS/Kernel/$(KERNEL_IMAGE) ]; then \
+		echo "Error: Kernel image OS/Kernel/$(KERNEL_IMAGE) not found"; \
+		exit 1; \
+	fi
+	@if [ ! -f dist/$(SQUASHFS_IMAGE) ]; then \
+		echo "Error: Squashfs image dist/$(SQUASHFS_IMAGE) not found"; \
+		exit 1; \
+	fi
 	scp -O OS/Kernel/$(KERNEL_IMAGE) root@$(TARGET_HOST):/tmp/
 	scp -O dist/$(SQUASHFS_IMAGE) root@$(TARGET_HOST):/tmp/
 	ssh root@$(TARGET_HOST) fwupdate fw-write /tmp/$(KERNEL_IMAGE) /tmp/$(SQUASHFS_IMAGE)
+	@echo "Now you can reboot your device and enjoy the new version."
+	@echo "Remember that your root password has been reset to goheishamon. Please change it."
 

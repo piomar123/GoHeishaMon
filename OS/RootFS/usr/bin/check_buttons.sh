@@ -1,6 +1,6 @@
 #!/bin/ash
 
-GOHEISHAMON_BIN=/usr/bin/GoHeishaMon_MIPSUPX
+GOHEISHAMON_BIN=/usr/bin/goheishamon
 
 logger -t check_buttons.sh "Init GPIOs"
 

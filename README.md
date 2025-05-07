@@ -105,6 +105,8 @@ To install the software, follow these steps:
    drive before the white LED turns on again, as leaving the drive with the config file present will
    result in it being copied again and triggering another reboot.
 
+7. After the update, you can access the CZ-TAW1 via SSH using the following password `goheishamon`. We recommend to change the password in the first login.
+
 ## Board Functionality: Buttons and LEDs
 
 ### Buttons
@@ -176,7 +178,7 @@ Host cz-taw1b
     KexAlgorithms +diffie-hellman-group1-sha1
 ```
 
-Add rsa key to `/etc/dropbear/authorized_keys` or use LuCi web UI.
+Add RSA key to `/etc/dropbear/authorized_keys` or use LuCi web UI.
 
 ### Configure NTP
 
@@ -198,9 +200,4 @@ logread
 
 ## TODO
 
-- queue command from a2wmain
-- flag to point to config file
-- manuals
-- tests
-
-..... more....
+- TLS for MQTT
