@@ -1,9 +1,7 @@
 # CZ-TAW1/CZ-TAW1B
 
 This project is to modify Panasonic CZ-TAW1 Firmware to send data from heat pump to MQTT instead to
-Aquarea Cloud (there is some POC work proving there is a posiblity to send data concurently to
-Aquarea Cloud and MQTT host using only modified CZ-TAW1 ,but it's not yet implemented in this
-project )
+Aquarea Cloud.
 
 ## This Project Contains
 
@@ -32,9 +30,9 @@ Summary:
 
 It is possible to go back to orginal software (A2Wmain with SmartCloud) very quick , without
 preparing pendrive ,becouse this solution don't remove firmware with A2Wmain (is still on other
-"Side" in the flash).
+"side" in the flash).
 
-Even the GoHeishaMon is on other side you can't just change the site in orginal software to
+Even the GoHeishaMon is on other side you can't just change the site in original software to
 GoHeishaMon without access to console. You have to install GoHeishaMon again.
 
 ## WiFi configuration
@@ -107,7 +105,7 @@ To install the software, follow these steps:
 
 7. After the update, you can access the CZ-TAW1 via SSH using the following password `goheishamon`. We recommend to change the password in the first login.
 
-## Board Functionality: Buttons and LEDs
+## Board Functionality
 
 ### Buttons
 
@@ -127,75 +125,32 @@ To install the software, follow these steps:
 
 - **Bottom LED**: When this LED is lit in green, it indicates the data pin's status, which is either low or high, for communication with the main board.
 
-## Configuration
+## Remote install
 
-### SSH Connection
-
-ssh was not working and dropbear doesn't started automatically. The solution was to start it through
-MQTT messages. Topic for sending messages: `panasonic_heat_pump/commands/OSCommand` Topic for
-reading output: `panasonic_heat_pump/commands/OSCommand/out`
-
-Just send a `/usr/sbin/dropbear`. Example:
+After first installation you can use the following command to install newer versions of GoHeishaMon through SSH:
 
 ```bash
-mosquitto_pub -t "panasonic_heat_pump/commands/OSCommand" -m "/usr/sbin/dropbear" -h <MQTT BROKER IP>
+TARGET_HOST=xxx.xxx.xxx.xxx make install
 ```
 
-For connecting to ssh weaker algorithms are needed:
+**Warning**: This command will remove the original firmware. You can restore it following the steps on this guide.
+
+### Restore original firmware
+
+To restore the original firmware, you need to follow these steps:
 
 ```bash
-ssh -oHostkeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group1-sha1 root@${PANASONIC_IP}
-```
-
-### Changing hostname
-
-`/etc/config/system`
-
-```bash
-uci set system.@system[0].hostname='cz-taw1b'
-uci commit system
-/etc/init.d/system reload
-```
-
-### Fix dropbear
-
-```bash
-root@cz-taw1b:~# cat /etc/config/dropbear
-config dropbear
-    option PasswordAuth 'on'
-    option RootPasswordAuth 'on'
-    option Port            '22'
-#    option BannerFile    '/etc/banner'
-```
-
-Set `~/.ssh/config`:
-
-```conf
-Host cz-taw1b
-    User root
-    PubkeyAcceptedKeyTypes +ssh-rsa
-    HostkeyAlgorithms +ssh-rsa
-    KexAlgorithms +diffie-hellman-group1-sha1
-```
-
-Add RSA key to `/etc/dropbear/authorized_keys` or use LuCi web UI.
-
-### Configure NTP
-
-Change NTP servers to your preferred ones.
-
-Screenshot from Homeassistant: ![Screenshot from Homeassistant](PompaCieplaScreen.PNG)
-
-### Important files
-
-- `OS/RootFS/etc/gh/nextboot.sh`
-- `OS/RootFS/etc/rc.local`
-- `OS/RootFS/usr/bin/check_buttons.sh`
-
-### Check logs
-
-```bash
-logread
+# Upload the original firmware to the CZ-TAW1
+scp -O OS/original_firmware.tgz ${TARGET_HOST}:/tmp
+# SSH into the CZ-TAW1
+ssh root@${TARGET_HOST}
+# Unpack the original firmware
+cd /tmp
+tar -xvzf original_firmware.tgz
+# Load the original firmware to the other partition side
+fwupdate fw-write /tmp/openwrt-ar71xx-generic-cus531-16M-kernel.bin /tmp/openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin
+# Reboot the CZ-TAW1
+reboot
 ```
 
 ## Alternative hardware
