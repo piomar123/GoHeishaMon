@@ -1,6 +1,6 @@
 TopicNumber = 15
-TopicName = "Heat_Energy_Production"
+TopicName = "Heat_Power_Production"
 TopicBit = 194
-TopicFunction = "getEnergy"
+TopicFunction = "getPower"
 TopicUnit = "Watt"
 TopicA2M = ""
