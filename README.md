@@ -35,7 +35,7 @@ preparing pendrive ,becouse this solution don't remove firmware with A2Wmain (is
 "Side" in the flash).
 
 Even the GoHeishaMon is on other side you can't just change the site in orginal software to
-GoHeishaMon without acces to console. You have to install GoHeishaMon again.
+GoHeishaMon without access to console. You have to install GoHeishaMon again.
 
 ## WiFi configuration
 
@@ -197,3 +197,35 @@ Screenshot from Homeassistant: ![Screenshot from Homeassistant](PompaCieplaScree
 ```bash
 logread
 ```
+
+## Alternative hardware
+
+If you want to use GoHeishaMon without the CZ-TAW1 module, you can use a Raspberry Pi or any other device.
+
+### Serial connection
+
+There are two ways to connect to the heat pump: using the CN-CNT socket or the CN-NMODE socket. The following images show both of them:
+![Serial Sockets](assets/serial_sockets.png)
+
+#### CN-CNT Socket
+
+The original serial connection cable connects to the CN-CNT socket with the following pinout (ordered from top to bottom):
+
+| Pin | Function | Description                                   |
+| --- | -------- | --------------------------------------------- |
+| 1   | +5V      | Power supply (250mA max)                      |
+| 2   | TX       | Data transmission FROM heat pump (0-5V level) |
+| 3   | RX       | Data transmission TO heat pump (0-5V level)   |
+| 4   | +12V     | Power supply (250mA max)                      |
+| 5   | GND      | Ground connection                             |
+
+#### CN-NMODE Socket
+
+Alternatively, you can use the CN-NMODE socket with this pinout (ordered from left to right):
+
+| Pin | Function | Description                                   |
+| --- | -------- | --------------------------------------------- |
+| 4   | +5V      | Power supply (250mA max)                      |
+| 3   | TX       | Data transmission FROM heat pump (0-5V level) |
+| 2   | RX       | Data transmission TO heat pump (0-5V level)   |
+| 1   | GND      | Ground connection                             |
