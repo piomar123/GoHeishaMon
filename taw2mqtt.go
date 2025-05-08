@@ -376,7 +376,7 @@ func MakeMQTTConn() (mqtt.Client, mqtt.Token) {
     opts.SetPassword(config.MqttPass)
     opts.SetUsername(config.MqttLogin)
     opts.SetClientID(config.MqttClientID)
-    opts.SetWill(config.Mqtt_set_base+"/LWT", "Offline", 1, true)
+    opts.SetWill(fmt.Sprintf("%s/status", config.Mqtt_topic_base), "Offline", 1, true)
     opts.SetKeepAlive(MqttKeepalive)
     opts.SetOnConnectHandler(startsub)
     opts.SetConnectionLostHandler(connLostHandler)
@@ -972,10 +972,9 @@ func tryParsePackets(buffer *bytes.Buffer, MC mqtt.Client, MT mqtt.Token) bool {
             totalreads, goodreads, readpercentage)
         log_message(log_msg)
 
-        // Process valid packet
         decode_heatpump_data(packet, MC, MT)
 
-        token := MC.Publish(fmt.Sprintf("%s/LWT", config.Mqtt_set_base), byte(0), false, "Online")
+        token := MC.Publish(fmt.Sprintf("%s/status", config.Mqtt_topic_base), byte(0), false, "Online")
         if token.Wait() && token.Error() != nil {
             fmt.Printf("Fail to publish, %v", token.Error())
         }

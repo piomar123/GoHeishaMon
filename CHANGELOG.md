@@ -1,5 +1,9 @@
 # Changelog
 
+## To be released
+
+- Add status topic to MQTT
+
 ## 1.1.0
 
 - Add TLS support to MQTT
