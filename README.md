@@ -109,19 +109,17 @@ To install the software, follow these steps:
 
 ### Buttons
 
-- **WPS Button**: This button does not have a specific function and remains inactive.
-
+- **WPS Button**: Pressing the WPS button, middle LED will flash blue and will mount the USB and if `settings.txt` file is present, it will change the WiFi settings. Use same format as in the original firmware.
 - **Reset Button**: Pressing the reset button will restart the GoHeishaMon application.
-
 - **Check Button**: The check button does not trigger any specific action.
-
-- **Simultaneous Button Press**: When all buttons are pressed together, the board will switch back to its original firmware.
+- **Simultaneous WPS and Reset Button Press**: When both the WPS and Reset buttons are pressed together, middle LED will flash green, and the root password will be reset to `goheishamon`.
+- **Simultaneous all Button Press**: When all buttons are pressed together, the board will switch back to its original firmware.
 
 ### LEDs
 
 - **Top LED**: This LED, illuminated in green, indicates whether the operating system (OS) is currently running.
 
-- **Mid LED**: The white light emitted from this LED signifies that the GoHeishaMon application is in operation.
+- **Mid LED**: The white light emitted from this LED signifies that the GoHeishaMon application is in running.
 
 - **Bottom LED**: When this LED is lit in green, it indicates the data pin's status, which is either low or high, for communication with the main board.
 

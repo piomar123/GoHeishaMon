@@ -2,6 +2,7 @@
 
 ## To be released
 
+- Add buttons functionality to recover connection and original firmware restore process documentation
 - Add status topic to MQTT
 
 ## 1.1.0

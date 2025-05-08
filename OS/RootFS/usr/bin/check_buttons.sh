@@ -41,6 +41,7 @@ while true; do
         echo low > /sys/class/gpio/gpio15/direction
     fi
 
+    # reset button
     if [ "$ButtonReset" = 'hi' ] && [ "$ButtonWPS" = 'lo' ] && [ "$ButtonCheck" = 'hi' ] ; then
         # yellow LED
         echo low > /sys/class/gpio/gpio2/direction
@@ -51,7 +52,32 @@ while true; do
         $GOHEISHAMON_BIN | logger -t goheishamon &
     fi
 
-    # fw side switch
+    # WPS button
+    if [ "$ButtonReset" = 'lo' ] && [ "$ButtonWPS" = 'hi' ] && [ "$ButtonCheck" = 'hi' ] ; then
+        # blue LED
+        echo high > /sys/class/gpio/gpio2/direction
+        echo low > /sys/class/gpio/gpio13/direction
+        echo low > /sys/class/gpio/gpio15/direction
+        logger -t check_buttons.sh "Mount USB"
+        /usr/bin/usb_mount.sh
+        if [ -e /mnt/usb/settings.txt ]; then
+            logger -t check_buttons.sh "Connect to SSID from settings.txt"
+            /usr/bin/specify_ssid_connect.sh
+        fi
+        /usr/bin/usb_umount.sh
+    fi
+
+    # WPS and reset buttons
+    if [ "$ButtonReset" = 'hi' ] && [ "$ButtonWPS" = 'hi' ] && [ "$ButtonCheck" = 'hi' ] ; then
+        # green LED
+        echo low > /sys/class/gpio/gpio2/direction
+        echo high > /sys/class/gpio/gpio13/direction
+        echo low > /sys/class/gpio/gpio15/direction
+        logger -t check_buttons.sh "Restore root password to default"
+        /root/pass.sh goheishamon
+    fi
+
+    # all buttons: firmware side switch
     if [ "$ButtonReset" = 'hi' ] && [ "$ButtonWPS" = 'hi' ] && [ "$ButtonCheck" = 'lo' ] ; then
         # red LED
         echo low > /sys/class/gpio/gpio2/direction
