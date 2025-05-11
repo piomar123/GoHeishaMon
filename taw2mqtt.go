@@ -256,102 +256,85 @@ type AutoDiscoverStruct struct {
 }
 
 func main() {
-	SwitchTopics = make(map[string]AutoDiscoverStruct)
+    SwitchTopics = make(map[string]AutoDiscoverStruct)
 
-	//	cfgfile = flag.String("c", "config", "a config file patch")
-	//	topicfile = flag.String("t", "Topics.csv", "a topic file patch")
-	flag.Parse()
-	if runtime.GOOS != "windows" {
-		configfile = "/etc/config/goheishamon.toml"
+    flag.Parse()
+    if runtime.GOOS != "windows" {
+        configfile = "/etc/config/goheishamon.toml"
+    } else {
+        configfile = "config"
+    }
 
-	} else {
-		configfile = "config"
+    _, err := os.Stat(configfile)
+    if err != nil {
+        fmt.Printf("Config file is missing: %s ", configfile)
+        UpdateConfig(configfile)
+    }
 
-	}
-	_, err := os.Stat(configfile)
-	if err != nil {
-		fmt.Printf("Config file is missing: %s ", configfile)
-		UpdateConfig(configfile)
-	}
-	go UpdateConfigLoop(configfile)
-	c1 := make(chan bool, 1)
-	go ClearActData()
-	CommandsToSend = make(map[xid.ID][]byte)
-	var in int
-	config = ReadConfig()
-	// if config.Readonly != true {
-	// 	log_message("Not sending this command. Heishamon in listen only mode! - this POC version don't support writing yet....")
-	// 	os.Exit(0)
-	// }
-	ports, err := serial.GetPortsList()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(ports) == 0 {
-		log.Fatal("No serial ports found!")
-	}
-	for _, port := range ports {
-		fmt.Printf("Found port: %v\n", port)
-	}
-	mode := &serial.Mode{
-		BaudRate: 9600,
-		Parity:   serial.EvenParity,
-		DataBits: 8,
-		StopBits: serial.OneStopBit,
-	}
-	Serial, err = serial.Open(config.Device, mode)
-	if err != nil {
-		fmt.Println(err)
-	}
-	PoolInterval := time.Second * time.Duration(config.ReadInterval)
-	ParseTopicList3()
-	MqttKeepalive = time.Second * time.Duration(config.MqttKeepalive)
-	MC, MT := MakeMQTTConn()
-	if config.HAAutoDiscover == true {
-		PublishTopicsToAutoDiscover(MC, MT)
-	}
-	for {
-		if MC.IsConnected() != true {
-			MC, MT = MakeMQTTConn()
-		}
-		if len(CommandsToSend) > 0 {
-			fmt.Println("there is more than one command ie", len(CommandsToSend))
-			in = 1
-			for key, value := range CommandsToSend {
-				if in == 1 {
+    go UpdateConfigLoop(configfile)
+    go ClearActData()
 
-					send_command(value, len(value))
-					delete(CommandsToSend, key)
-					in++
-					time.Sleep(time.Second * time.Duration(config.SleepAfterCommand))
+    CommandsToSend = make(map[xid.ID][]byte)
+    var in int
+    config = ReadConfig()
 
-				} else {
-					fmt.Println("comment number  ", in, " is too big I will do it in the next cycle")
-					break
-				}
-				fmt.Println("conclude range after command table ")
+    ports, err := serial.GetPortsList()
+    if err != nil {
+        log.Fatal(err)
+    }
+    if len(ports) == 0 {
+        log.Fatal("No serial ports found!")
+    }
+    for _, port := range ports {
+        fmt.Printf("Found port: %v\n", port)
+    }
 
-			}
+    mode := &serial.Mode{
+        BaudRate: 9600,
+        Parity:   serial.EvenParity,
+        DataBits: 8,
+        StopBits: serial.OneStopBit,
+    }
 
-		} else {
-			send_command(panasonicQuery, PANASONICQUERYSIZE)
-		}
-		go func() {
-			tbool := readSerial(MC, MT)
-			c1 <- tbool
-		}()
+    Serial, err = serial.Open(config.Device, mode)
+    if err != nil {
+        fmt.Println(err)
+    }
+    defer Serial.Close() // Ensure serial port is closed at exit
 
-		select {
-		case res := <-c1:
-			fmt.Println("read ma status", res)
-		case <-time.After(5 * time.Second):
-			fmt.Println("out of time for read :(")
-		}
+    PoolInterval := time.Second * time.Duration(config.ReadInterval)
+    ParseTopicList3()
+    MqttKeepalive = time.Second * time.Duration(config.MqttKeepalive)
+    MC, MT := MakeMQTTConn()
 
-		time.Sleep(PoolInterval)
+    if config.HAAutoDiscover {
+        PublishTopicsToAutoDiscover(MC, MT)
+    }
 
-	}
+    go readSerial(MC, MT)
 
+    for {
+        if len(CommandsToSend) > 0 {
+            fmt.Println("there is more than one command ie", len(CommandsToSend))
+            in = 1
+            for key, value := range CommandsToSend {
+                if in == 1 {
+                    send_command(value, len(value))
+                    delete(CommandsToSend, key)
+                    in++
+                    time.Sleep(time.Second * time.Duration(config.SleepAfterCommand))
+                } else {
+                    fmt.Println("command number ", in, " is too big I will do it in the next cycle")
+                    break
+                }
+                fmt.Println("conclude range after command table ")
+            }
+        } else {
+            send_command(panasonicQuery, PANASONICQUERYSIZE)
+        }
+
+        time.Sleep(PoolInterval)
+    }
 }
 
 func ClearActData() {
@@ -379,7 +362,8 @@ func MakeMQTTConn() (mqtt.Client, mqtt.Token) {
     opts.SetWill(fmt.Sprintf("%s/Status", config.Mqtt_topic_base), "offline", 1, true)
     opts.SetKeepAlive(MqttKeepalive)
     opts.SetOnConnectHandler(startsub)
-    opts.SetConnectionLostHandler(connLostHandler)
+	opts.SetConnectRetry(true)
+	opts.SetAutoReconnect(true)
 
     if config.MqttUseTLS {
         tlsConfig := &tls.Config{}
@@ -875,108 +859,127 @@ func send_command(command []byte, length int) bool {
 // 	}
 //   }
 
-func readSerial(MC mqtt.Client, MT mqtt.Token) bool {
-	// Read from serial port into temp buffer
-	tempBuf := make([]byte, 512)  // Use a temporary buffer to read chunks of data
-	n, err := Serial.Read(tempBuf)
-	if err != nil {
-		log.Fatal(err)
-	}
+func readSerial(MC mqtt.Client, MT mqtt.Token) {
+    tempBuf := make([]byte, 512)
+    const PACKET_LENGTH = 203
 
-	if n == 0 {
-		fmt.Println("\nEOF")
-		return false
-	}
+    // Variables to track logging frequency
+    lastLogTime := time.Now()
+    const LOG_INTERVAL = 3 * time.Second
 
-	// Write new data to our persistent buffer
-	_, _ = serialBuffer.Write(tempBuf[:n])
-	log_message(fmt.Sprintf("Read %d bytes from serial port, buffer now contains %d bytes\n", n, serialBuffer.Len()))
+    for {
+        // Read from serial port
+        n, err := Serial.Read(tempBuf)
+        if err != nil {
+            log.Printf("Serial read error: %v", err)
+            // Brief pause to avoid tight loop on error
+            time.Sleep(100 * time.Millisecond)
+            continue
+        }
 
-	// Try to find and process valid packets in the buffer
-	return tryParsePackets(&serialBuffer, MC, MT)
+        if n == 0 {
+            // No data, brief pause to avoid tight loop
+            time.Sleep(50 * time.Millisecond)
+            continue
+        }
+
+        // Write new data to our persistent buffer
+        _, _ = serialBuffer.Write(tempBuf[:n])
+
+        // Log less frequently to reduce spam
+        shouldLog := time.Since(lastLogTime) > LOG_INTERVAL ||
+                    serialBuffer.Len() >= PACKET_LENGTH
+
+        if shouldLog {
+            log_message(fmt.Sprintf("Buffer contains %d bytes", serialBuffer.Len()))
+            lastLogTime = time.Now()
+        }
+
+        if serialBuffer.Len() >= PACKET_LENGTH {
+            tryParsePackets(&serialBuffer, MC, MT)
+        }
+    }
 }
 
 func tryParsePackets(buffer *bytes.Buffer, MC mqtt.Client, MT mqtt.Token) bool {
     const PACKET_LENGTH = 203
+    const HEADER_SIZE = 4
     packetFound := false
 
-    // Create a sliding window buffer - initially empty
-    window := make([]byte, 0, 4)
+    // Don't process if buffer doesn't have enough data for at least a header
+    if buffer.Len() < HEADER_SIZE {
+        return false
+    }
 
-    // Process as many complete packets as we can find in the buffer
-    for buffer.Len() > 0 {
-        // Read one byte at a time to build our sliding window
-        b := make([]byte, 1)
-        _, err := buffer.Read(b)
-        if err != nil {
-            log.Printf("Error reading byte: %v", err)
-            return packetFound
+    // Use a more efficient approach - check the entire buffer for headers
+    // Instead of reading byte by byte, we'll read chunks and look for headers
+    data := buffer.Bytes() // This doesn't consume the bytes, just provides a view
+
+    // Try to find valid headers and process packets
+    var position int = 0
+
+    for position <= len(data)-HEADER_SIZE {
+        // Check if we have a valid header at the current position
+        if isValidHeader(data[position:position+HEADER_SIZE]) {
+            // Found a potential header
+
+            // Check if we have a complete packet starting from this position
+            if position+PACKET_LENGTH > len(data) {
+                // Not enough data for a complete packet, keep collecting
+                if position > 0 {
+                    // Remove data before the header to keep the buffer size manageable
+                    buffer.Next(position) // Discard bytes before header
+                }
+                return packetFound
+            }
+
+            // We have a complete packet - extract it
+            packet := make([]byte, PACKET_LENGTH)
+            copy(packet, data[position:position+PACKET_LENGTH])
+
+            // Validate checksum
+            if !isValidChecksum(packet) {
+                log_message("Checksum invalid, skipping packet")
+                position++ // Move past this header and look for another
+                continue
+            }
+
+            // Process the valid packet
+            log_message("Found valid packet with correct checksum!")
+            goodreads++
+            totalreads++
+            readpercentage = ((goodreads / totalreads) * 100)
+
+            log_msg := fmt.Sprintf("Total reads: %f, good reads: %f (%.2f%%)",
+                totalreads, goodreads, readpercentage)
+            log_message(log_msg)
+
+            decode_heatpump_data(packet, MC, MT)
+
+            token := MC.Publish(
+				fmt.Sprintf("%s/Status", config.Mqtt_topic_base), byte(0), false, "online")
+            if token.Wait() && token.Error() != nil {
+                fmt.Printf("Publish failed: %v", token.Error())
+            }
+
+            // Remove processed packet and continue searching
+            buffer.Next(position + PACKET_LENGTH)
+            data = buffer.Bytes() // Update data view after buffer modification
+            position = 0 // Start again from the beginning of the new buffer
+            packetFound = true
+
+        } else {
+            // No valid header at this position, move to next byte
+            position++
         }
+    }
 
-        // Add the byte to our window
-        window = append(window, b[0])
-
-        // If we have less than 4 bytes, keep reading
-        if len(window) < 4 {
-            continue
-        }
-
-        // Keep window at exactly 4 bytes by removing oldest byte when needed
-        if len(window) > 4 {
-            window = window[1:]
-        }
-
-        // Check if current window is a valid header
-        if !isValidHeader(window) {
-            // Not a valid header, continue reading next byte (sliding the window)
-            continue
-        }
-
-        // Found a valid header, now check if we have enough bytes for a full packet
-        if buffer.Len() < (PACKET_LENGTH - 4) {
-            log_message(fmt.Sprintf("Valid header found but need more data. Have %d bytes, waiting for more.", buffer.Len() + 4))
-            // Put the header bytes back so we can read them again later
-            _, _ = buffer.Write(window)
-            return packetFound
-        }
-
-        // We have a full packet, read it
-        packet := make([]byte, PACKET_LENGTH)
-        // Copy the header we already have
-        copy(packet[0:4], window)
-
-        // Read the rest of the packet
-        n, err := buffer.Read(packet[4:])
-        if err != nil || n != (PACKET_LENGTH - 4) {
-            log.Printf("Error reading full packet: %v", err)
-            return packetFound
-        }
-
-        // Reset the window for next search
-        window = window[:0]
-
-        totalreads++
-
-        // Rest of packet processing remains the same
-        if !isValidChecksum(packet) {
-            log_message("Checksum received false!")
-            continue
-        }
-
-        log_message("Checksum and header received ok!")
-        goodreads++
-        packetFound = true
-        readpercentage = ((goodreads / totalreads) * 100)
-
-        log_msg := fmt.Sprintf("Total reads: %f and total good reads: %f (%.2f %%)",
-            totalreads, goodreads, readpercentage)
-        log_message(log_msg)
-
-        decode_heatpump_data(packet, MC, MT)
-
-        token := MC.Publish(fmt.Sprintf("%s/Status", config.Mqtt_topic_base), byte(0), false, "online")
-        if token.Wait() && token.Error() != nil {
-            fmt.Printf("Fail to publish, %v", token.Error())
+    // If we've searched the whole buffer without finding a complete packet
+    if position > 0 && !packetFound {
+        // Keep the last few bytes in case they contain a partial header
+        bytesToRetain := HEADER_SIZE - 1
+        if position > bytesToRetain {
+            buffer.Next(position - bytesToRetain)
         }
     }
 
