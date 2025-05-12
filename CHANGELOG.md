@@ -1,6 +1,6 @@
 # Changelog
 
-## To be released
+## 1.1.1
 
 - Add init script to start GoHeishaMon on boot
 - Fix stack overflow in read serial goroutines
