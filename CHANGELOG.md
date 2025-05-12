@@ -2,6 +2,8 @@
 
 ## To be released
 
+- Add init script to start GoHeishaMon on boot
+- Fix stack overflow in read serial goroutines
 - Add buttons functionality to recover connection and original firmware restore process documentation
 - Add status topic to MQTT
 

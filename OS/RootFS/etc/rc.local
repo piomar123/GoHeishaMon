@@ -13,8 +13,5 @@ logger -t rc.local "Execute nextboot.sh"
 logger -t rc.local "Clean nextboot.sh"
 echo "" > /etc/gh/nextboot.sh
 
-logger -t rc.local "Start GoHeishaMon"
-/usr/bin/goheishamon | logger -t goheishamon
-
 #/usr/bin/a2wmain > /dev/ttyS0
 #exit 0
