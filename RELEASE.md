@@ -7,6 +7,7 @@ git add .
 git commit -m "release: Version $VERSION"
 # Tag release
 git tag $VERSION
+git push
 git push origin $VERSION
 ```
 
