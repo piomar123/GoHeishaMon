@@ -5,10 +5,10 @@ GOHEISHAMON_BIN=/usr/bin/GoHeishaMon_MIPSUPX
 logger -t check_buttons.sh "Init GPIOs"
 
 # LED
-echo 2 > /sys/class/gpio/export
-echo 3 > /sys/class/gpio/export
-echo 13 > /sys/class/gpio/export
-echo 15 > /sys/class/gpio/export
+echo 2 > /sys/class/gpio/export  # middle blue
+echo 3 > /sys/class/gpio/export  # bottom green
+echo 13 > /sys/class/gpio/export  # middle green
+echo 15 > /sys/class/gpio/export  # middle red
 
 # link
 echo 10 > /sys/class/gpio/export
@@ -17,6 +17,13 @@ echo 10 > /sys/class/gpio/export
 echo 0 > /sys/class/gpio/export
 echo 1 > /sys/class/gpio/export
 echo 16 > /sys/class/gpio/export
+
+# initial purple LED
+echo high > /sys/class/gpio/gpio2/direction
+echo low > /sys/class/gpio/gpio13/direction
+echo high > /sys/class/gpio/gpio15/direction
+
+sleep 1
 
 while true; do
     # press == `hi`
@@ -48,7 +55,7 @@ while true; do
         echo high > /sys/class/gpio/gpio15/direction
         logger -t check_buttons.sh "Restart GoHeishaMon"
         kill $(ps | grep "$GOHEISHAMON_BIN" | head -n1 | awk '{ print $1 }')
-        $GOHEISHAMON_BIN > /dev/ttyS0 &
+        $GOHEISHAMON_BIN | tee /dev/ttyS0 | logger -t goheisha &
     fi
 
     # fw side switch

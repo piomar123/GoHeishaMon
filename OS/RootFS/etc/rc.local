@@ -16,7 +16,7 @@ echo "" > /etc/gh/nextboot.sh
 /usr/sbin/dropbear &
 
 logger -t rc.local "Start GoHeishaMon"
-/usr/bin/GoHeishaMon_MIPSUPX > /dev/ttyS0
+/usr/bin/GoHeishaMon_MIPSUPX | tee /dev/ttyS0 | logger -t goheisha
 
 #/usr/bin/a2wmain > /dev/ttyS0
 #exit 0

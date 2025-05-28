@@ -1,4 +1,17 @@
-# CZ-TAW1/CZ-TAW1B
+# GoHeishaMon in overlayfs
+
+**This branch uses overlayfs (jffs2) to store GoHeishaMon executable.** 
+That way you can easily update the app without reflashing whole firmware. 
+For that to work, before firmware flashing, the executable `GoHeishaMon_MIPSUPX` 
+**needs to be placed in the root directory of the USB stick** and will be copied 
+right after the first boot to the overlayfs. (This is to be able to activate dropbear SSH 
+through MQQT command as I tried different approaches to run it but nothing else worked :/ ). 
+
+For testing and frequent updates, it's recommended to use RAM `/tmp` partition to store 
+the GoHeishaMon exec to give the Flash memory some relief.
+
+
+## CZ-TAW1/CZ-TAW1B
 
 This project is to modify Panasonic CZ-TAW1 Firmware to send data from heat pump to MQTT instead to
 Aquarea Cloud (there is some POC work proving there is a posiblity to send data concurently to

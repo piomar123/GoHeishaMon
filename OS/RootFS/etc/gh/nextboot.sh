@@ -1,6 +1,7 @@
 rm /etc/gh/config
 /usr/bin/usb_mount.sh
 cp /mnt/usb/GoHeishaMonConfig.new /etc/gh/config
+cp /mnt/usb/GoHeishaMon_MIPSUPX /usr/bin/GoHeishaMon_MIPSUPX
 /usr/bin/usb_umount.sh
 
 reload_config
