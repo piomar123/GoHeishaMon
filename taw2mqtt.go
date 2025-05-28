@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -96,14 +95,14 @@ func fileExists(filename string) bool {
 }
 
 func SetGPIODebug() {
-	err := ioutil.WriteFile("/sys/class/gpio/export", []byte("2"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("3"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("13"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("15"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("10"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("0"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("1"), 0200)
-	err = ioutil.WriteFile("/sys/class/gpio/export", []byte("16"), 0200)
+	err := os.WriteFile("/sys/class/gpio/export", []byte("2"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("3"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("13"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("15"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("10"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("0"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("1"), 0200)
+	err = os.WriteFile("/sys/class/gpio/export", []byte("16"), 0200)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -137,34 +136,34 @@ func GetGPIOStatus() {
 	if len(GPIO) > 1 {
 		fmt.Println(GPIO)
 		if GPIO["gpio-0"] == "lo" && GPIO["gpio-1"] == "lo" && GPIO["gpio-16"] == "hi" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 		}
 		if GPIO["gpio-0"] == "hi" || GPIO["gpio-1"] == "hi" || GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("low"), 644)
 		}
 		if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 		}
 		if GPIO["gpio-0"] == "hi" && GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 		}
 		if GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 		}
 		if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-			err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-			err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
+			err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 			cmd := exec.Command("fwupdate", "sw")
 			out, err := cmd.CombinedOutput()
 			fmt.Println(out)
@@ -180,14 +179,14 @@ func GetGPIOStatus() {
 
 		}
 		if GPIO["gpio-10"] == "hi" {
-			err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("low"), 644)
+			err := os.WriteFile("/sys/class/gpio/gpio3/direction", []byte("low"), 644)
 			if err != nil {
 				fmt.Println(err)
 			}
 
 		}
 		if GPIO["gpio-10"] == "lo" {
-			err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("high"), 644)
+			err := os.WriteFile("/sys/class/gpio/gpio3/direction", []byte("high"), 644)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -270,7 +269,7 @@ func UpdatePassword() bool {
 		return true
 	} else {
 		_, _ = exec.Command("chmod", "+x", "/root/pass.sh").Output()
-		dat, _ := ioutil.ReadFile("/mnt/usb/GoHeishaMonPassword.new")
+		dat, _ := os.ReadFile("/mnt/usb/GoHeishaMonPassword.new")
 		fmt.Printf("updejtuje haslo na: %s", string(dat))
 		o, err := exec.Command("/root/pass.sh", string(dat)).Output()
 		if err != nil {
@@ -432,34 +431,34 @@ func ExecuteGPIOCommand() {
 		if len(GPIO) > 1 {
 			fmt.Println(GPIO)
 			if GPIO["gpio-0"] == "lo" && GPIO["gpio-1"] == "lo" && GPIO["gpio-16"] == "hi" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 			}
 			if GPIO["gpio-0"] == "hi" || GPIO["gpio-1"] == "hi" || GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("low"), 644)
 			}
 			if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 			}
 			if GPIO["gpio-0"] == "hi" && GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 			}
 			if GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 			}
 			if GPIO["gpio-0"] == "hi" && GPIO["gpio-1"] == "hi" && GPIO["gpio-16"] == "lo" {
-				err = ioutil.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
-				err = ioutil.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio2/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio13/direction", []byte("low"), 644)
+				err = os.WriteFile("/sys/class/gpio/gpio15/direction", []byte("high"), 644)
 				cmd := exec.Command("fwupdate", "sw")
 				out, err := cmd.CombinedOutput()
 				fmt.Println(out)
@@ -473,12 +472,12 @@ func ExecuteGPIOCommand() {
 
 			}
 			if GPIO["gpio-10"] == "hi" {
-				err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("low"), 644)
+				err := os.WriteFile("/sys/class/gpio/gpio3/direction", []byte("low"), 644)
 				fmt.Println(err)
 
 			}
 			if GPIO["gpio-10"] == "lo" {
-				err := ioutil.WriteFile("/sys/class/gpio/gpio3/direction", []byte("high"), 644)
+				err := os.WriteFile("/sys/class/gpio/gpio3/direction", []byte("high"), 644)
 				fmt.Println(err)
 
 			}
