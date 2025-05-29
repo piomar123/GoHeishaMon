@@ -43,12 +43,12 @@ updating other side was take place succesfully.
 
 Summary:
 
-It is possible to go back to orginal software (A2Wmain with SmartCloud) very quick , without
-preparing pendrive ,becouse this solution don't remove firmware with A2Wmain (is still on other
+It is possible to go back to orginal software (A2Wmain with SmartCloud) very quick, without
+preparing pendrive, because this solution doesn't remove firmware with A2Wmain (it is still on the other
 "Side" in the flash).
 
-Even the GoHeishaMon is on other side you can't just change the site in orginal software to
-GoHeishaMon without acces to console. You have to install GoHeishaMon again.
+Even though the GoHeishaMon is on other side you can't just change the side in orginal software to
+GoHeishaMon without an access to the console. You have to install GoHeishaMon again.
 
 ## WiFi configuration
 
@@ -92,15 +92,13 @@ These steps allow you to set up your WiFi on the CZ-TAW1 without the need for WP
 
 ## Install instructions
 
-New hardware should use 1.0.191 to avoid problems with PL23a3 drivers.
-[Original link](https://github.com/lsochanowski/GoHeishaMon/issues/26#issuecomment-1374770882)
-
 To install the software, follow these steps:
 
 1. Format a USB drive to FAT32 and copy the following files to it:
 
    - `openwrt-ar71xx-generic-cus531-16M-kernel.bin`
    - `openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin`
+   - `GoHeishaMon_MIPSUPX`
 
 2. Additionally, configure and copy the file named `GoHeishaMonConfig.new`.
 
@@ -142,20 +140,26 @@ To install the software, follow these steps:
 
 ### SSH Connection
 
-ssh was not working and dropbear doesn't started automatically. The solution was to start it through
+SSH was not working and dropbear doesn't started automatically. The solution was to start it through
 MQTT messages. Topic for sending messages: `panasonic_heat_pump/commands/OSCommand` Topic for
 reading output: `panasonic_heat_pump/commands/OSCommand/out`
 
-Just send a `/usr/sbin/dropbear`. Example:
+Just send a `/usr/sbin/dropbear` command. Example:
 
 ```bash
 mosquitto_pub -t "panasonic_heat_pump/commands/OSCommand" -m "/usr/sbin/dropbear" -h <MQTT BROKER IP>
 ```
 
-For connecting to ssh weaker algorithms are needed:
+For connecting to SSH, weaker algorithms are needed:
 
 ```bash
 ssh -oHostkeyAlgorithms=+ssh-rsa -oKexAlgorithms=+diffie-hellman-group1-sha1 root@${PANASONIC_IP}
+```
+
+Default root password: `GoHeishaMonpass`. It's recommended to change it by command:
+
+```bash
+/root/pass.sh YourNewPassword
 ```
 
 ### Changing hostname
