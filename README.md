@@ -14,7 +14,8 @@ Trying to join [lsochanowski](https://github.com/lsochanowski/GoHeishaMon) and [
 
 https://github.com/lsochanowski/GoHeishaMon
 
-This repository with my recent changes is in on [wip/lsochanowski](https://github.com/piomar123/GoHeishaMon/tree/) branch.
+This repository with my recent changes is in on 
+[wip/lsochanowski](https://github.com/piomar123/GoHeishaMon/tree/wip/lsochanowski) branch.
 I'm currently using the newest version from that branch 
 with [NodeRed_Heishamon_control dashboard](https://github.com/edterbak/NodeRed_Heishamon_control).
 
