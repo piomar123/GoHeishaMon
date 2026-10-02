@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+# GoHeishaMon as a procd service: a single instance, respawned when it exits.
+#   /etc/init.d/goheishamon start|stop|restart
+# Started from /etc/rc.local.
+# Logs: logread | grep goheisha
+# Log of each abnormal exit (kept in RAM): /tmp/goheishamon-crashes/
+
+START=99
+STOP=10
+USE_PROCD=1
+
+start_service() {
+	procd_open_instance
+	procd_set_param command /usr/bin/goheishamon-run.sh
+	# respawn <threshold> <delay> <retries>: restart <delay> s after it exits;
+	# give up after <retries> runs in a row that each lasted < <threshold> s
+	procd_set_param respawn 3600 30 5
+	procd_close_instance
+}
