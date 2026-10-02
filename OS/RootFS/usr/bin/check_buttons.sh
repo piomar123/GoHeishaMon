@@ -35,8 +35,9 @@ while true; do
     # Pin for communication by serial port
     CNCNTLink=`awk '/gpio-10 /{print $5}' /sys/kernel/debug/gpio`
 
-    # GoHeishaMon running
-    if [ $(ps | grep "$GOHEISHAMON_BIN" | wc -l) -gt 1 ]; then
+    # GoHeishaMon running (by name, so it also works when testing a binary from /tmp;
+    # `ps | grep` raced with grep matching itself and made the LED blink)
+    if pidof "$(basename "$GOHEISHAMON_BIN")" > /dev/null; then
         # white LED
         echo high > /sys/class/gpio/gpio2/direction
         echo high > /sys/class/gpio/gpio13/direction
