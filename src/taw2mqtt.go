@@ -205,7 +205,9 @@ func PublishTopicsToAutoDiscover(mclient mqtt.Client, token mqtt.Token) {
 		//Topic_Value = []byte("")
 		//v.TopicType = "sensor"
 
-		logger.Error("%v", err)
+		if err != nil {
+			logger.Error("%v", err)
+		}
 		TOP := fmt.Sprintf("%s/%s/%s/config", config.Mqtt_topic_base, v.TopicType, strings.ReplaceAll(m.Name, " ", "_"))
 		logger.Info("It publishes to %s warosc %s", TOP, string(Topic_Value))
 		token = mclient.Publish(TOP, byte(0), false, Topic_Value)
@@ -224,7 +226,9 @@ func PublishTopicsToAutoDiscover(mclient mqtt.Client, token mqtt.Token) {
 		Topic_Value, err := json.Marshal(vs)
 		//Topic_Value = []byte("")
 
-		logger.Error("%v", err)
+		if err != nil {
+			logger.Error("%v", err)
+		}
 		TOP := fmt.Sprintf("%s/%s/%s/config", config.Mqtt_topic_base, "switch", strings.ReplaceAll(vs.Name, " ", "_"))
 		logger.Info("It publishes to %s warosc %s", TOP, string(Topic_Value))
 		token = mclient.Publish(TOP, byte(0), false, Topic_Value)
