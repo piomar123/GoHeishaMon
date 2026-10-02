@@ -11,6 +11,9 @@ BINARY_UNIX=$(BINARY_NAME)_AMD64
 BINARY_MIPS=$(BINARY_NAME)_MIPS
 BINARY_ARM=$(BINARY_NAME)_ARM
 BINARY_MIPSUPX=$(BINARY_NAME)_MIPSUPX
+# Newer Go releases produce bigger binaries: go1.27 + UPX no longer fits in the
+# device's 2 MB overlay (go1.24: 1.66 MB packed, go1.27: 1.98 MB).
+MIPS_GOTOOLCHAIN ?= go1.24.13
 KERNEL_IMAGE=openwrt-ar71xx-generic-cus531-16M-kernel.bin
 SQUASHFS_IMAGE=openwrt-ar71xx-generic-cus531-16M-rootfs-squashfs.bin
 
@@ -56,7 +59,7 @@ build-linux:
 
 build-mips: ## build for MIPS
 build-mips:
-	CGO_ENABLED=0 GOOS=linux GOARCH=mips GOMIPS=softfloat $(GOBUILD) -ldflags "-s -w" -a -o dist/$(BINARY_MIPS) ./src
+	GOTOOLCHAIN=$(MIPS_GOTOOLCHAIN) CGO_ENABLED=0 GOOS=linux GOARCH=mips GOMIPS=softfloat $(GOBUILD) -ldflags "-s -w" -a -o dist/$(BINARY_MIPS) ./src
 
 build-rpi:  ## build for ARM
 build-rpi:
