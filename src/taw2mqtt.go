@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -148,7 +147,7 @@ func UpdatePassword() bool {
 		return true
 	} else {
 		_, _ = exec.Command("chmod", "+x", "/root/pass.sh").Output()
-		dat, _ := ioutil.ReadFile("/mnt/usb/GoHeishaMonPassword.new")
+		dat, _ := os.ReadFile("/mnt/usb/GoHeishaMonPassword.new")
 		logger.Info("updates the password to: %s", string(dat))
 		o, err := exec.Command("/root/pass.sh", string(dat)).Output()
 		if err != nil {
@@ -371,7 +370,7 @@ func MakeMQTTConn() (mqtt.Client, mqtt.Token) {
         tlsConfig := &tls.Config{}
 
         if config.MqttCaCertFile != "" {
-            caCert, err := ioutil.ReadFile(config.MqttCaCertFile)
+            caCert, err := os.ReadFile(config.MqttCaCertFile)
             if err == nil {
                 caCertPool := x509.NewCertPool()
                 caCertPool.AppendCertsFromPEM(caCert)
