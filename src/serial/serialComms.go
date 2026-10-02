@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/pando85/GoHeishaMon/src/logger"
@@ -27,9 +28,12 @@ const loggingRatio = 150
 // Comms represents a serial port used to communicate with the heat pump.
 // Handles low level communications, i.e. packet assembly, checksum generation/verification etc.
 type Comms struct {
-	goodreads    int64
-	totalreads   int64
-	buffer       bytes.Buffer
+	goodreads  int64
+	totalreads int64
+	buffer     bytes.Buffer
+	// portMu guards serialPort: Read (serial reader goroutine) may reopen it
+	// while SendCommand (main loop goroutine) writes to it.
+	portMu       sync.Mutex
 	serialPort   *tarm.Port
 	serialConfig *tarm.Config
 }
@@ -69,6 +73,12 @@ func (s *Comms) openInternal() error {
 
 // Close closes the serial port.
 func (s *Comms) Close() error {
+	s.portMu.Lock()
+	defer s.portMu.Unlock()
+	return s.closeInternal()
+}
+
+func (s *Comms) closeInternal() error {
 	if s.serialPort != nil {
 		return s.serialPort.Close()
 	}
@@ -108,6 +118,8 @@ func calcChecksum(command []byte) byte {
 func (s *Comms) SendCommand(command []byte) error {
 	var chk = calcChecksum(command)
 
+	s.portMu.Lock()
+	defer s.portMu.Unlock()
 	_, err := s.serialPort.Write(command) // first send command
 	if err != nil {
 		return fmt.Errorf("failed to write command: %w", err)
@@ -124,10 +136,12 @@ func (s *Comms) SendCommand(command []byte) error {
 
 func (s *Comms) readToBuffer() {
 	data := make([]byte, dataBufferSize)
+	s.portMu.Lock()
+	defer s.portMu.Unlock()
 	n, err := s.serialPort.Read(data)
 	if err != nil && err != io.EOF {
 		logger.Error("Serial read error: %v", err)
-		s.Close()
+		s.closeInternal()
 		// Attempt to reconnect
 		if reopenErr := s.openInternal(); reopenErr != nil {
 			logger.Error("Failed to reconnect: %v", reopenErr)
