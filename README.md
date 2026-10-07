@@ -134,7 +134,9 @@ To install the software, follow these steps:
 
 - **Mid LED**: The white light emitted from this LED signifies that the GoHeishaMon application is in operation.
 
-- **Bottom LED**: When this LED is lit in green, it indicates the data pin's status, which is either low or high, for communication with the main board.
+- **Bottom LED**: Green, blinks (1 s on, 1 s off) while valid packets arrive from the heat pump,
+  off when none came for more than 3 s. GoHeishaMon touches `/tmp/goheishamon.packet` on every
+  packet (needs a GoHeishaMon build with that, e.g. piomar123 fix/pando/races-and-deps d4d3d3f+).
 
 ## Configuration
 
