@@ -930,8 +930,25 @@ func (a *serialAvailability) update(client mqtt.Client, losses uint64, goodReply
 	}
 }
 
+// heartbeatFile gets its mtime set on every valid packet from the heat pump;
+// check_buttons.sh on the device blinks the bottom LED while it is fresh.
+const heartbeatFile = "/tmp/goheishamon.packet"
+
+func touchHeartbeat(path string) error {
+	now := time.Now()
+	if err := os.Chtimes(path, now, now); err == nil {
+		return nil
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
 func readSerial(MC mqtt.Client, MT mqtt.Token) {
 	availability := serialAvailability{}
+	heartbeatErrLogged := false
 	for {
 		// Read packet from serial port using the state machine
 		packet := serialComms.Read()
@@ -950,6 +967,10 @@ func readSerial(MC mqtt.Client, MT mqtt.Token) {
 				// Decode and publish the data
 				handlePacket(packet, MC)
 
+				if err := touchHeartbeat(heartbeatFile); err != nil && !heartbeatErrLogged {
+					logger.Error("Heartbeat file: %v", err)
+					heartbeatErrLogged = true
+				}
  			} else if len(packet) == serial.OptionalMessageLength {
 				// Optional 20-byte packets - could be handled here in the future
 				log.Printf("Received optional packet (20 bytes) - not yet implemented")
