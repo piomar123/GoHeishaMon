@@ -10,20 +10,33 @@ Trying to join [lsochanowski](https://github.com/lsochanowski/GoHeishaMon) and [
 * [ ] (if possible) upgrade OpenWRT to a newer version (while keeping two-sided memory layout)
 
 
-# What's running on my Aquarea (as of 2026-10-02)
+# What's running on my Aquarea (as of 2026-10-07)
 
 * **Firmware:** lsochanowski-based firmware from
   [wip/lsochanowski](https://github.com/piomar123/GoHeishaMon/tree/wip/lsochanowski)
   (8c1efcf) - the app binary lives in overlayfs (`/usr/bin/GoHeishaMon_MIPSUPX`) instead of ROM,
   so it can be replaced without reflashing. The overlay is only ~2 MB, so the UPX-packed binary
   must stay below ~1.8 MB.
-* **App:** [pando85/GoHeishaMon](https://github.com/pando85/GoHeishaMon) at `aec71c1`
-  (before the serial rewrite in 1.2.0), built with the newer dependencies from wip/lsochanowski
-  (867e7c4). This combination was never committed - it was a local build.
-* **Next candidate (testing):**
-  [fix/pando/races-and-deps](https://github.com/piomar123/GoHeishaMon/tree/fix/pando/races-and-deps) -
-  newest pando (1.2.0 + HA template fix) with data race fixes (the old build crashed with
-  memory corruption after ~56h), updated dependencies, built with go1.24 + UPX 4.2.4.
+* **Service scripts (overlay, installed 2026-10-02):** from
+  [feat/lsochanowski/procd-service](https://github.com/piomar123/GoHeishaMon/tree/feat/lsochanowski/procd-service) -
+  GoHeishaMon runs as a procd service (`/etc/init.d/goheishamon`, started from rc.local),
+  respawned 30 s after it exits; after an abnormal exit the syslog is saved to
+  `/tmp/goheishamon-crashes/`. Logs: `logread | grep goheisha`.
+  Installed: `check_buttons.sh` from 140d3d4, `goheishamon-run.sh` from 0e7ccb1 (copies output
+  to ttyS0; reverted on the branch).
+* **App in the overlay (started on boot):** [pando85/GoHeishaMon](https://github.com/pando85/GoHeishaMon)
+  at `aec71c1` (before the serial rewrite in 1.2.0), built with the newer dependencies from
+  wip/lsochanowski (867e7c4). This combination was never committed - it was a local build.
+  It crashed with memory corruption after ~56 h (data races).
+* **App running now (test from RAM, since 2026-10-02):**
+  [fix/pando/races-and-deps](https://github.com/piomar123/GoHeishaMon/tree/fix/pando/races-and-deps)
+  at 19f178d - newest pando (1.2.0 + HA template fix) with the data race fixes and updated
+  dependencies, built with go1.24 + UPX 4.2.4. Run by hand from `/tmp`, without respawn, so a
+  reboot goes back to the overlay app. No crash in 5 days.
+* **Next:** fix/pando/races-and-deps d4d3d3f (adds a heartbeat file touched on every heat-pump
+  packet) with `check_buttons.sh` from efad4c3, so the bottom LED blinks while heat-pump data
+  arrives (it used to follow the ttyS0 console, not the heat-pump link). Test it from RAM, then
+  replace the overlay app.
 
 # lsochanowski/GoHeishaMon
 
