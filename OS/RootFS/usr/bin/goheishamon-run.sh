@@ -1,7 +1,6 @@
 #!/bin/sh
 # Runs GoHeishaMon once; /etc/init.d/goheishamon (procd) respawns it.
-# stdout and stderr (incl. Go panics) go to syslog with the "goheisha" tag
-# and to the ttyS0 console.
+# stdout and stderr (incl. Go panics) go to syslog with the "goheisha" tag.
 # After an abnormal exit the whole syslog buffer is saved to RAM, because the
 # small logd ring buffer gets overwritten by the next run within minutes.
 
@@ -20,9 +19,7 @@ trap on_term TERM INT
 
 rm -f "$FIFO"
 mkfifo "$FIFO" || exit 1
-# Also copy to the ttyS0 console: the bottom LED (check_buttons.sh, gpio10 ->
-# gpio3) follows that line, so it blinks while GoHeishaMon logs heat-pump data
-tee /dev/ttyS0 < "$FIFO" | logger -t goheisha &
+logger -t goheisha < "$FIFO" &
 logger_pid=$!
 "$BIN" > "$FIFO" 2>&1 &
 pid=$!

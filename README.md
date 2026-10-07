@@ -134,9 +134,7 @@ To install the software, follow these steps:
 
 - **Mid LED**: The white light emitted from this LED signifies that the GoHeishaMon application is in operation.
 
-- **Bottom LED**: Green, follows the ttyS0 console line (sampled about once a second). GoHeishaMon's
-  output is copied to that console and it logs every packet from the heat pump, so the LED blinks
-  while heat-pump data is flowing and stays steady when nothing is logged.
+- **Bottom LED**: When this LED is lit in green, it indicates the data pin's status, which is either low or high, for communication with the main board.
 
 ## Configuration
 
