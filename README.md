@@ -23,18 +23,15 @@ Trying to join [lsochanowski](https://github.com/lsochanowski/GoHeishaMon) and [
   rc.local), respawned 30 s after it exits; after an abnormal exit the syslog is saved to
   `/tmp/goheishamon-crashes/`. Logs: `logread | grep goheisha`. `check_buttons.sh` blinks the
   bottom LED (1 s on, 1 s off) while packets arrive from the heat pump.
-* **App in the overlay (started on boot):** [pando85/GoHeishaMon](https://github.com/pando85/GoHeishaMon)
-  at `aec71c1` (before the serial rewrite in 1.2.0), built with the newer dependencies from
-  wip/lsochanowski (867e7c4). This combination was never committed - it was a local build.
-  It crashed with memory corruption after ~56 h (data races). It doesn't write the heartbeat
-  file, so with it the bottom LED stays off.
-* **App running now (test from RAM, since 2026-10-09):**
+* **App (overlay, since 2026-10-09):**
   [fix/pando/races-and-deps](https://github.com/piomar123/GoHeishaMon/tree/fix/pando/races-and-deps)
-  at d4d3d3f - newest pando (1.2.0 + HA template fix) with the data race fixes and updated
-  dependencies, built with go1.24 + UPX 4.2.4, plus a heartbeat file (`/tmp/goheishamon.packet`)
-  touched on every heat-pump packet. Run by hand from `/tmp`, without respawn, so a reboot goes
-  back to the overlay app. The previous build of this branch (19f178d) ran 7 days without a crash.
-* **Next:** after a few days, replace the overlay app with the d4d3d3f build.
+  at d4d3d3f - newest pando (1.2.0 + HA template fix) with data race fixes (the previous app
+  crashed with memory corruption after ~56 h), updated dependencies, built with go1.24 +
+  UPX 4.2.4, plus a heartbeat file (`/tmp/goheishamon.packet`) touched on every heat-pump packet.
+  The same code without the heartbeat (19f178d) ran 7 days from RAM without a crash.
+* **Previous app:** [pando85/GoHeishaMon](https://github.com/pando85/GoHeishaMon) at `aec71c1`
+  (before the serial rewrite in 1.2.0), built with the newer dependencies from wip/lsochanowski
+  (867e7c4) - a local build that was never committed.
 
 # lsochanowski/GoHeishaMon
 
