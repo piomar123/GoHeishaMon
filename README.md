@@ -116,6 +116,41 @@ To install the software, follow these steps:
    drive before the white LED turns on again, as leaving the drive with the config file present will
    result in it being copied again and triggering another reboot.
 
+## Updating GoHeishaMon in the overlay
+
+The overlay is a ~2 MB JFFS2 partition and the binary is ~1.7 MB, so the old and the new binary
+don't fit side by side, and `df` can't be trusted right after deleting a file. Test a new binary
+from `/tmp` (RAM) first, e.g. `/usr/bin/goheishamon-run.sh /tmp/GoHeishaMon_MIPSUPX` with the
+service stopped, then:
+
+```bash
+/etc/init.d/goheishamon stop; sleep 2; ps | grep -i '[h]eish'   # nothing may hold the old file
+cp /usr/bin/GoHeishaMon_MIPSUPX /tmp/GoHeishaMon_MIPSUPX.old      # backup in RAM (also keep a copy off the device)
+rm /usr/bin/GoHeishaMon_MIPSUPX && sync
+kill -HUP $(pidof jffs2_gcd_mtd3); sleep 30; df /overlay          # let the JFFS2 GC erase the freed blocks
+cp /tmp/GoHeishaMon_MIPSUPX /usr/bin/.GoHeishaMon_MIPSUPX.new && sync
+md5sum /tmp/GoHeishaMon_MIPSUPX /usr/bin/.GoHeishaMon_MIPSUPX.new  # must match
+mv /usr/bin/.GoHeishaMon_MIPSUPX.new /usr/bin/GoHeishaMon_MIPSUPX && chmod +x /usr/bin/GoHeishaMon_MIPSUPX && sync
+/etc/init.d/goheishamon start
+```
+
+Don't `cp` over the old file: until the copy completes, the old data is still live, so both
+versions need space at once. If `cp` fails with "No space left on device", remove the partial
+file, don't reboot (there is no binary in the overlay now), and run the binary from `/tmp` until
+it's sorted out.
+
+**About the JFFS2 garbage collector.** Deleted data isn't freed at once: its flash blocks become
+*dirty* and are only reusable after the GC thread (`jffs2_gcd_mtd3` for the overlay on mtd3) has
+erased them. `df` already counts dirty space as available (`avail = dirty_size + free_size` in
+`jffs2_statfs()`), so it shows the space before it is really free. The kernel wakes the GC thread
+with SIGHUP itself (`jffs2_garbage_collect_trigger()`), e.g. when a block becomes completely
+obsolete and waits to be erased, and `kill -HUP` from userspace makes it run one extra GC pass
+(see `fs/jffs2/background.c`). This isn't a documented interface (`Documentation/` doesn't
+mention it); it's what the kernel source does, and is harmless. Writes also run GC themselves
+when they run out of free blocks, so the signal and the wait mostly make the copy faster and
+less likely to hit the reserved blocks. The overlay is mtd3 (`rootfs_data`, 2176 KB in 64 KB
+erase blocks) on this board; check with `cat /proc/mtd` and `ps | grep jffs2_gcd`.
+
 ## Board Functionality: Buttons and LEDs
 
 ### Buttons
