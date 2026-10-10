@@ -1,16 +1,49 @@
 # What is this fork about
 
-Trying to join [lsochanowski](https://github.com/lsochanowski/GoHeishaMon) and [rondoval](https://github.com/rondoval/GoHeishaMon) efforts into one:
+My setup for the Panasonic CZ-TAW1 (Aquarea) adapter: the
+[lsochanowski](https://github.com/lsochanowski/GoHeishaMon) firmware, which keeps the original
+Panasonic firmware on the other flash side, running the GoHeishaMon app from
+[pando85](https://github.com/pando85/GoHeishaMon), the actively maintained continuation of
+lsochanowski's app. Fixes go upstream to pando85 where they make sense
+([#1](https://github.com/pando85/GoHeishaMon/pull/1),
+[#2](https://github.com/pando85/GoHeishaMon/pull/2) merged).
 
-* [ ] keep simplicity of firmware modification with sysupgrade from USB (lsochanowski)
-* [ ] use new sensors and bugfixes from rondoval
-* [ ] adjust GoHeishaMon to be more compatible with HeishaMon:
-    * [x] raw decoded values
-    * [ ] handle [Set command topics](https://github.com/Egyras/HeishaMon/blob/master/MQTT-Topics.md#command-topics)
-* [ ] (if possible) upgrade OpenWRT to a newer version (while keeping two-sided memory layout)
+GitHub shows this repository as a fork of rondoval/GoHeishaMon for historical reasons; `main` is
+rondoval's code plus this README and isn't what I run. The work is on these branches:
 
+| Branch | Base | What |
+|---|---|---|
+| [wip/lsochanowski](https://github.com/piomar123/GoHeishaMon/tree/wip/lsochanowski) | lsochanowski | firmware with the app in overlayfs (replaceable without reflashing) |
+| [feat/lsochanowski/procd-service](https://github.com/piomar123/GoHeishaMon/tree/feat/lsochanowski/procd-service) | wip/lsochanowski | procd service with respawn and crash logs, bottom LED driven by heat-pump packets, how to update the binary in the overlay |
+| [fix/pando/races-and-deps](https://github.com/piomar123/GoHeishaMon/tree/fix/pando/races-and-deps) | pando85 1.2.0 | data race fixes, updated dependencies, go1.24 pin for MIPS, heartbeat file for the LED (deployed) |
+| [feat/pando/set-curves](https://github.com/piomar123/GoHeishaMon/tree/feat/pando/set-curves) | pando85 1.2.0 | HeishaMon `SetCurves` command, fix for swapped curve topics (not deployed yet) |
 
-# What's running on my Aquarea (as of 2026-10-09)
+Goals:
+
+* [x] keep the lsochanowski firmware and its dual-side flash layout, app in the overlay
+* [x] app based on pando85, with the fixes offered upstream
+* [ ] HeishaMon-compatible [command topics](https://github.com/Egyras/HeishaMon/blob/master/MQTT-Topics.md#command-topics):
+    * [x] raw decoded values, `SetZ1HeatRequestTemperature` and the other request temperatures
+    * [x] `SetCurves` (feat/pando/set-curves)
+* [ ] newer OpenWrt while keeping the dual-side layout: not possible with a current kernel
+  (e.g. 6.6 is ~2.6 MB, the kernel slots are 1472 KB); rondoval's full OpenWrt port (below)
+  is the way to a current system, at the cost of the original firmware side
+
+## Recent updates (2026-10)
+
+* Data race fixes: the previous app build crashed with memory corruption after ~56 h; the fixed
+  build ran 7 days from RAM without a crash and is now in the overlay.
+* procd service: respawn 30 s after an exit, syslog saved to `/tmp/goheishamon-crashes/` after a
+  crash, logd buffer raised to 64 KB.
+* Bottom LED: it used to follow the ttyS0 console line, not the heat-pump link; it now blinks
+  while valid packets arrive (GoHeishaMon touches `/tmp/goheishamon.packet` on each one).
+* Docs for updating the binary in the ~2 MB JFFS2 overlay (delete, let the GC erase, copy).
+* `SetCurves` and a fix for outside high/low being swapped for Z1 cool, Z2 heat and Z2 cool.
+* Found why SSH and LuCI don't work after the first boot of the lsochanowski firmware: the
+  Panasonic `fwupdate uci-load` (S09fw) wipes `/etc/config`, which hides the image's `dropbear`
+  and `uhttpd` configs; LuCI works again after `cp /rom/etc/config/uhttpd /etc/config/`.
+
+# What's running on my Aquarea (as of 2026-10-10)
 
 * **Firmware:** lsochanowski-based firmware from
   [wip/lsochanowski](https://github.com/piomar123/GoHeishaMon/tree/wip/lsochanowski)
@@ -50,13 +83,24 @@ on the other memory side.
 
 https://github.com/rondoval/GoHeishaMon
 
-This fork contains a completely rewritten GoHeishaMon app with a different approach to reading and writing settings to Panasonic heat pumps.
-It's not working correctly with [NodeRed_Heishamon_control dashboard](https://github.com/edterbak/NodeRed_Heishamon_control) 
-hence I need to make some changes first.
+A completely rewritten GoHeishaMon app with a different approach to reading and writing
+settings: instead of `SetXxx` command topics it uses `XxxState/set`, e.g.
+`panasonic_heat_pump/main/Heatpump_State/set` next to the `panasonic_heat_pump/main/Heatpump_State`
+state topic. It doesn't work with the
+[NodeRed_Heishamon_control dashboard](https://github.com/edterbak/NodeRed_Heishamon_control)
+without changes.
 
-Instead of `SetXxxState` messages it uses `XxxState/set` topic to allow writing values to the heat pump in a more uniform way, 
-e.g. instead of `panasonic_heat_pump/commands/SetHeatpump` it uses `panasonic_heat_pump/main/Heatpump_State/set` topic 
-where `panasonic_heat_pump/main/Heatpump_State` can used to read the value from the heat pump.
+rondoval also maintains a full OpenWrt port for the CZ-TAW1
+([rondoval/openwrt](https://github.com/rondoval/openwrt), branches `panasonic-cz-taw1-*`, up to
+OpenWrt 24.10 with kernel 6.6): one firmware partition instead of the two Panasonic sides, so
+much more space and a current system, but the original firmware is gone and installing needs a
+serial console and TFTP. The images can also be booted from RAM over TFTP without touching the
+flash, which is a safe way to try them.
 
-It's worth to mention that this version of GoHeishaMon can be compiled and used with lsochanowski firmware as it still fits 
-the dual-side Flash layout.
+# pando85/GoHeishaMon
+
+https://github.com/pando85/GoHeishaMon
+
+Continues lsochanowski's app (same `SetXxx` command topics, so the NodeRed dashboard works),
+with releases up to 1.2.0 (serial communication rewrite). This is the app I run, with the fixes
+from fix/pando/races-and-deps.
