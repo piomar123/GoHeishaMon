@@ -12,6 +12,7 @@ type MockPort struct {
 	writeData []byte
 	readErr   error
 	writeErr  error
+	closed    bool
 }
 
 func NewMockPort(data []byte) *MockPort {
@@ -41,7 +42,12 @@ func (m *MockPort) Write(p []byte) (n int, err error) {
 }
 
 func (m *MockPort) Close() error {
+	m.closed = true
 	return nil
+}
+
+func (m *MockPort) IsClosed() bool {
+	return m.closed
 }
 
 func (m *MockPort) Flush() error {
