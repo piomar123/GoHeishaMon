@@ -54,16 +54,36 @@ const DataMessageLength = 203
 
 const loggingRatio = 150
 
+const (
+	reopenMinDelay = time.Second
+	reopenMaxDelay = 30 * time.Second
+	// defaultStallTimeout is how long the port may stay silent before it is
+	// reopened: a vanished USB adapter makes reads return no data and no error.
+	defaultStallTimeout = 30 * time.Second
+)
+
 // Comms represents a serial port used to communicate with the heat pump.
 // Handles low level communications, i.e. packet assembly, checksum generation/verification etc.
 type Comms struct {
 	goodreads    int64
 	totalreads   int64
 	buffer       bytes.Buffer
-	// portMu guards the port across reads, writes and reconnection.
+	// portMu guards the port across reads, writes and reconnection, and the
+	// fields below it.
 	portMu       sync.Mutex
-	serialPort   SerialPort
+	serialPort   SerialPort // nil while the port is down
 	serialConfig *tarm.Config
+	nextReopen   time.Time
+	reopenDelay  time.Duration
+	lastRx       time.Time
+
+	// StallTimeout overrides defaultStallTimeout; set it before the first Read.
+	StallTimeout time.Duration
+
+	// for tests; nil means the real port, clock and sleep
+	openPort func(*tarm.Config) (SerialPort, error)
+	now      func() time.Time
+	sleep    func(time.Duration)
 }
 
 // Statistics contains read statistics
@@ -74,7 +94,10 @@ type Statistics struct {
 }
 
 // Open opens the serial port and initializes internal structures.
+// If it fails, Read and SendCommand keep retrying with a growing delay.
 func (s *Comms) Open(portName string, timeout time.Duration) error {
+	s.portMu.Lock()
+	defer s.portMu.Unlock()
 	s.serialConfig = &tarm.Config{
 		Name:        portName,
 		Baud:        9600,
@@ -85,14 +108,38 @@ func (s *Comms) Open(portName string, timeout time.Duration) error {
 	return s.openInternal()
 }
 
+func (s *Comms) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
 func (s *Comms) openInternal() error {
-	var err error
 	logger.Info("Opening serial port")
-	port, err := tarm.OpenPort(s.serialConfig)
+	var port SerialPort
+	var err error
+	if s.openPort != nil {
+		port, err = s.openPort(s.serialConfig)
+	} else {
+		var p *tarm.Port
+		if p, err = tarm.OpenPort(s.serialConfig); err == nil {
+			port = &tarmPort{Port: p}
+		}
+	}
 	if err != nil {
+		if s.reopenDelay < reopenMinDelay {
+			s.reopenDelay = reopenMinDelay
+		}
+		s.nextReopen = s.clock().Add(s.reopenDelay)
+		s.reopenDelay *= 2
+		if s.reopenDelay > reopenMaxDelay {
+			s.reopenDelay = reopenMaxDelay
+		}
 		return fmt.Errorf("failed to open serial port: %w", err)
 	}
-	s.serialPort = &tarmPort{Port: port}
+	s.serialPort = port
+	s.lastRx = s.clock()
 
 	logger.Debug("Flushing serial port buffer")
 	if err := s.serialPort.Flush(); err != nil {
@@ -100,6 +147,34 @@ func (s *Comms) openInternal() error {
 	}
 
 	return nil
+}
+
+// ensureOpen reopens a port that is down, at most once per reopen delay.
+// Callers hold portMu.
+func (s *Comms) ensureOpen() bool {
+	if s.serialPort != nil {
+		return true
+	}
+	if s.serialConfig == nil || s.clock().Before(s.nextReopen) {
+		return false
+	}
+	if err := s.openInternal(); err != nil {
+		logger.Error("%v (next attempt in %v)", err, s.nextReopen.Sub(s.clock()))
+		return false
+	}
+	logger.Info("Serial port reopened")
+	return true
+}
+
+// linkLost closes the port right away, which also frees the device name, so
+// a re-plugged USB adapter comes back under the same name. Callers hold portMu.
+func (s *Comms) linkLost(reason error) {
+	logger.Error("Serial link lost: %v; reopening the port", reason)
+	if err := s.closeInternal(); err != nil {
+		logger.Error("Failed to close serial port: %v", err)
+	}
+	s.serialPort = nil
+	s.nextReopen = s.clock()
 }
 
 // Close closes the serial port.
@@ -110,10 +185,12 @@ func (s *Comms) Close() error {
 }
 
 func (s *Comms) closeInternal() error {
-	if s.serialPort != nil {
-		return s.serialPort.Close()
+	if s.serialPort == nil {
+		return nil
 	}
-	return nil
+	err := s.serialPort.Close()
+	s.serialPort = nil
+	return err
 }
 
 // GetStatistics returns current read statistics
@@ -151,13 +228,20 @@ func (s *Comms) SendCommand(command []byte) error {
 
 	s.portMu.Lock()
 	defer s.portMu.Unlock()
+	if !s.ensureOpen() {
+		return fmt.Errorf("serial port is not open")
+	}
 	_, err := s.serialPort.Write(command) // first send command
 	if err != nil {
-		return fmt.Errorf("failed to write command: %w", err)
+		err = fmt.Errorf("failed to write command: %w", err)
+		s.linkLost(err)
+		return err
 	}
 	_, err = s.serialPort.Write([]byte{chk}) // then calculated checksum byte afterwards
 	if err != nil {
-		return fmt.Errorf("failed to write checksum: %w", err)
+		err = fmt.Errorf("failed to write checksum: %w", err)
+		s.linkLost(err)
+		return err
 	}
 
 	logger.DebugHex("Send", command)
@@ -168,20 +252,33 @@ func (s *Comms) SendCommand(command []byte) error {
 func (s *Comms) readToBuffer() {
 	data := make([]byte, dataBufferSize)
 	s.portMu.Lock()
+	if !s.ensureOpen() {
+		s.portMu.Unlock()
+		// stands in for the read timeout so the caller's loop doesn't spin
+		if s.sleep != nil {
+			s.sleep(100 * time.Millisecond)
+		} else {
+			time.Sleep(100 * time.Millisecond)
+		}
+		return
+	}
 	defer s.portMu.Unlock()
 	n, err := s.serialPort.Read(data)
-	if err != nil && err != io.EOF {
-		logger.Error("Serial read error: %v", err)
-		if err := s.closeInternal(); err != nil {
-			logger.Error("Failed to close serial port: %v", err)
-		}
-		// Attempt to reconnect
-		if reopenErr := s.openInternal(); reopenErr != nil {
-			logger.Error("Failed to reconnect: %v", reopenErr)
-		}
-	}
 	if n > 0 {
 		s.buffer.Write(data[:n])
+		s.lastRx = s.clock()
+		s.reopenDelay = 0 // the link works: the next failure retries quickly again
+	}
+	if err != nil && err != io.EOF {
+		s.linkLost(fmt.Errorf("read error: %w", err))
+		return
+	}
+	stall := s.StallTimeout
+	if stall <= 0 {
+		stall = defaultStallTimeout
+	}
+	if n == 0 && s.clock().Sub(s.lastRx) > stall {
+		s.linkLost(fmt.Errorf("no data for %v", stall))
 	}
 }
 

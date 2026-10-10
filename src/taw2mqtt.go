@@ -289,6 +289,11 @@ func main() {
 	}()
 
 	PoolInterval := time.Second * time.Duration(config.ReadInterval)
+	// the heat pump answers every query, so silence for several intervals
+	// means the serial link is gone
+	if stall := 5 * PoolInterval; stall > 30*time.Second {
+		serialComms.StallTimeout = stall
+	}
 	ParseTopicList3()
 	MqttKeepalive = time.Second * time.Duration(config.MqttKeepalive)
 	MC, MT := MakeMQTTConn()
