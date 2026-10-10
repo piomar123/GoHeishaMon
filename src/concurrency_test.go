@@ -95,3 +95,21 @@ func TestActDataConcurrentRefresh(t *testing.T) {
 	close(stop)
 	wg.Wait()
 }
+
+func TestCommandQueueIsFIFO(t *testing.T) {
+	for command, _ := nextCommand(); command != nil; command, _ = nextCommand() {
+	}
+	// e.g. "quiet mode off" then "powerful on" must reach the heat pump in that order
+	for i := byte(1); i <= 5; i++ {
+		queueCommand([]byte{i})
+	}
+	for i := byte(1); i <= 5; i++ {
+		command, pending := nextCommand()
+		if len(command) != 1 || command[0] != i {
+			t.Fatalf("command %d = %v, want [%d]", i, command, i)
+		}
+		if want := int(5 - i); pending != want {
+			t.Errorf("after command %d pending = %d, want %d", i, pending, want)
+		}
+	}
+}
