@@ -1,6 +1,7 @@
 #!/bin/ash
 
 GOHEISHAMON_BIN=/usr/bin/GoHeishaMon_MIPSUPX
+GOHEISHAMON_COMM=$(basename "$GOHEISHAMON_BIN" | cut -c1-15)
 # GoHeishaMon sets its mtime on every valid packet from the heat pump
 HEARTBEAT=/tmp/goheishamon.packet
 
@@ -36,9 +37,11 @@ while true; do
     # press == `lo`
     ButtonCheck=`awk '/gpio-16 /{print $5}' /sys/kernel/debug/gpio`
 
-    # GoHeishaMon running (by name, so it also works when testing a binary from /tmp;
-    # `ps | grep` raced with grep matching itself and made the LED blink)
-    if pidof "$(basename "$GOHEISHAMON_BIN")" > /dev/null; then
+    # GoHeishaMon running: matched by the start of the process name, so a test binary
+    # from /tmp also counts, even renamed (e.g. GoHeishaMon_MIPSUPX.8589412); comm
+    # holds the first 15 characters. `ps | grep` raced with grep matching itself and
+    # made the LED blink.
+    if grep -qs "^$GOHEISHAMON_COMM" /proc/[0-9]*/comm; then
         # white LED
         echo high > /sys/class/gpio/gpio2/direction
         echo high > /sys/class/gpio/gpio13/direction
