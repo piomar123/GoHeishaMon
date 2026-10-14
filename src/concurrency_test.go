@@ -75,7 +75,6 @@ func TestNextCommandEmpty(t *testing.T) {
 }
 
 func TestActDataConcurrentRefresh(t *testing.T) {
-	ParseTopicList3()
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(1)
