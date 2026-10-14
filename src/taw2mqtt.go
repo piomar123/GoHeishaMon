@@ -1185,7 +1185,7 @@ func decode_heatpump_data(data []byte, mclient mqtt.Client) {
 
 		if changed {
 			logger.Info("received TOP%d %s: %s", k, v.TopicName, Topic_Value)
-			if config.Aquarea2mqttCompatible {
+			if config.Aquarea2mqttCompatible && v.TopicA2M != "" {
 				TOP := "aquarea/state/" + fmt.Sprintf("%s/%s", config.Aquarea2mqttPumpID, v.TopicA2M)
 				value := strings.ToUpper(strings.TrimSpace(Topic_Value))
 				logger.Info("It publishes to %s warosc %s", TOP, string(value))

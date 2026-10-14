@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
+
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // capturedPacket is a 0x10 reply captured on 2026-10-14 from a heat pump without the
@@ -228,5 +231,39 @@ func TestDecodersOfAZeroByte(t *testing.T) {
 		if got := f(0); got != w {
 			t.Errorf("%s(0) = %q, want %q", name, got, w)
 		}
+	}
+}
+
+type recordingClient struct {
+	mqtt.Client
+	topics []string
+}
+
+func (r *recordingClient) Publish(topic string, _ byte, _ bool, _ interface{}) mqtt.Token {
+	r.topics = append(r.topics, topic)
+	return &mqtt.DummyToken{}
+}
+
+func TestAquarea2mqttSkipsTopicsWithoutAName(t *testing.T) {
+	saved := config
+	defer func() { config = saved }()
+	config.Aquarea2mqttCompatible = true
+	config.Aquarea2mqttPumpID = "pump"
+	clearActData()
+
+	r := &recordingClient{}
+	decode_heatpump_data(mustDecodeHex(t, capturedPacket), r)
+
+	a2m := 0
+	for _, topic := range r.topics {
+		if strings.HasPrefix(topic, "aquarea/state/") {
+			a2m++
+			if strings.HasSuffix(topic, "/") {
+				t.Errorf("published to %q", topic)
+			}
+		}
+	}
+	if a2m == 0 {
+		t.Error("no aquarea2mqtt topics published")
 	}
 }
