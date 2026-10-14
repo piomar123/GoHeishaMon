@@ -953,11 +953,11 @@ func readSerial(MC mqtt.Client, MT mqtt.Token) {
 }
 
 func getBit7and8(input byte) string {
-	return fmt.Sprintf("%d", (input&0b11)-1)
+	return fmt.Sprintf("%d", int(input&0b11)-1)
 }
 
 func getBit3and4and5(input byte) string {
-	return fmt.Sprintf("%d", ((input>>3)&0b111)-1)
+	return fmt.Sprintf("%d", int((input>>3)&0b111)-1)
 }
 
 func getIntMinus1Times10(input byte) string {
@@ -984,17 +984,17 @@ func getIntMinus128(input byte) string {
 func getIntMinus1Div5(input byte) string {
 	value := int(input) - 1
 	out := float32(value) / 5
-	return fmt.Sprintf("%.2f", out)
+	return fmt.Sprintf("%.1f", out)
 
 }
 
 func getRight3bits(input byte) string {
-	return fmt.Sprintf("%d", (input&0b111)-1)
+	return fmt.Sprintf("%d", int(input&0b111)-1)
 
 }
 
 func getBit1and2(input byte) string {
-	return fmt.Sprintf("%d", (input>>6)-1)
+	return fmt.Sprintf("%d", int(input>>6)-1)
 
 }
 
@@ -1038,13 +1038,52 @@ func getPower(input byte) string {
 }
 
 func getBit3and4(input byte) string {
-	return fmt.Sprintf("%d", ((input>>4)&0b11)-1)
+	return fmt.Sprintf("%d", int((input>>4)&0b11)-1)
 
 }
 
 func getBit5and6(input byte) string {
-	return fmt.Sprintf("%d", ((input>>2)&0b11)-1)
+	return fmt.Sprintf("%d", int((input>>2)&0b11)-1)
 
+}
+
+func getBit1(input byte) string {
+	return fmt.Sprintf("%d", input>>7)
+}
+
+func getFirstByte(input byte) string {
+	return fmt.Sprintf("%d", int(input>>4)-1)
+}
+
+func getSecondByte(input byte) string {
+	return fmt.Sprintf("%d", int(input&0b1111)-1)
+}
+
+func getIntMinus1Div50(input byte) string {
+	return fmt.Sprintf("%.2f", float32(int(input)-1)/50)
+}
+
+func getValvePID(input byte) string {
+	return fmt.Sprintf("%.1f", float32(int(input)-1)/2)
+}
+
+// getModel returns the model code bytes 129-138 as hex, e.g. "62 D2 0B ...". // TOP92 //
+func getModel(data []byte) string {
+	return fmt.Sprintf("% X", data[129:139])
+}
+
+// withQuarterFraction appends the .25/.50/.75 fraction HeishaMon stores in a 3-bit field
+// (1 = .00, 2 = .25, 3 = .50, 4 = .75) to a whole-degree temperature. // TOP5, TOP6 //
+func withQuarterFraction(whole string, field byte) string {
+	switch field {
+	case 2:
+		return whole + ".25"
+	case 3:
+		return whole + ".50"
+	case 4:
+		return whole + ".75"
+	}
+	return whole
 }
 
 func getPumpFlow(data []byte) string { // TOP1 //
@@ -1088,6 +1127,11 @@ var topicFunctions = map[string]func(byte) string{
 	"getPower":            getPower,
 	"getBit5and6":         getBit5and6,
 	"getBit3and4":         getBit3and4,
+	"getBit1":             getBit1,
+	"getFirstByte":        getFirstByte,
+	"getSecondByte":       getSecondByte,
+	"getIntMinus1Div50":   getIntMinus1Div50,
+	"getValvePID":         getValvePID,
 }
 
 // decodeTopic returns the value of topic k in a 203-byte main data packet.
@@ -1106,6 +1150,12 @@ func decodeTopic(data []byte, k int) string {
 		return fmt.Sprintf("%d", int(binary.BigEndian.Uint16([]byte{data[189], data[188]}))-1)
 	case 44:
 		return getErrorInfo(data)
+	case 92:
+		return getModel(data)
+	case 5:
+		return withQuarterFraction(getIntMinus128(data[v.TopicBit]), data[118]&0b111)
+	case 6:
+		return withQuarterFraction(getIntMinus128(data[v.TopicBit]), (data[118]>>3)&0b111)
 	}
 	f, ok := topicFunctions[v.TopicFunction]
 	if !ok {
