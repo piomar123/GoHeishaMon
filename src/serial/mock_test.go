@@ -39,6 +39,20 @@ func TestMockReadValidDataPacket(t *testing.T) {
 	}
 }
 
+// K/L series heat pumps answer a 0x21 query with an extra data block.
+func TestMockReadValidExtraDataPacket(t *testing.T) {
+	packet := makeValidPacket(0xc8, 0x21)
+	mc := newMockComms(packet)
+
+	result := mc.Read()
+	if result == nil {
+		t.Fatal("expected valid packet, got nil")
+	}
+	if len(result) != DataMessageLength || result[3] != 0x21 {
+		t.Errorf("got length %d type %#x, want %d 0x21", len(result), result[3], DataMessageLength)
+	}
+}
+
 func TestMockReadValidOptionalPacket(t *testing.T) {
 	packet := makeValidPacket(0x11, 0x50)
 	mc := newMockComms(packet)

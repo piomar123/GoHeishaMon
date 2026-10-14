@@ -6,6 +6,9 @@ Aquarea2mqttCompatible=false
 Aquarea2mqttPumpID=""
 Mqtt_topic_base="panasonic_heat_pump/main"
 Mqtt_set_base="panasonic_heat_pump/commands"
+# Extra data block topics (K/L series and newer). Default: "extra" next to Mqtt_topic_base
+# when that ends in "/main", otherwise "<Mqtt_topic_base>/extra".
+#Mqtt_extra_base="panasonic_heat_pump/extra"
 ForceRefreshTime=300
 MqttServer="127.0.0.1"
 MqttPort="1883"

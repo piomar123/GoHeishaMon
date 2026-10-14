@@ -346,7 +346,7 @@ func (s *Comms) checkHeader() (length int, ok bool) {
 	data := s.buffer.Bytes()
 	length = int(data[1]) + 3
 	ok = false
-	if data[0] == 0x71 && data[2] == 0x1 && (data[3] == 0x50 || data[3] == 0x10) {
+	if data[0] == 0x71 && data[2] == 0x1 && (data[3] == 0x50 || data[3] == 0x10 || data[3] == 0x21) {
 		ok = true
 		return
 	}

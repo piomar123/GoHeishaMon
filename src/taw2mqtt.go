@@ -77,6 +77,7 @@ type Config struct {
 	Aquarea2mqttCompatible bool
 	Mqtt_topic_base        string
 	Mqtt_set_base          string
+	Mqtt_extra_base        string
 	Aquarea2mqttPumpID     string
 	MqttPass               string
 	MqttClientID           string
@@ -321,6 +322,11 @@ func main() {
 			}
 		} else {
 			_ = send_command(panasonicQuery, PANASONICQUERYSIZE)
+			if extraBlockAvailable.Load() {
+				// leave the heat pump time to answer the main query first
+				time.Sleep(PoolInterval / 2)
+				_ = send_command(panasonicExtraQuery, PANASONICQUERYSIZE)
+			}
 		}
 
 		time.Sleep(PoolInterval)
@@ -339,6 +345,11 @@ func clearActData() {
 	defer actDataMu.Unlock()
 	for k := range actData {
 		actData[k] = "nil" //funny i know ;)
+	}
+	actDataExtraMu.Lock()
+	defer actDataExtraMu.Unlock()
+	for k := range actDataExtra {
+		actDataExtra[k] = "nil"
 	}
 }
 
@@ -937,7 +948,7 @@ func readSerial(MC mqtt.Client, MT mqtt.Token) {
 				}
 
 				// Decode and publish the data
-				decode_heatpump_data(packet, MC)
+				handlePacket(packet, MC)
 
  			} else if len(packet) == serial.OptionalMessageLength {
 				// Optional 20-byte packets - could be handled here in the future
