@@ -84,10 +84,7 @@ func decode_heatpump_data_extra(data []byte, mclient mqtt.Client) {
 		if changed {
 			logger.Info("received XTOP%d %s: %s", k, v.Name, value)
 			topic := fmt.Sprintf("%s/%s", base, v.Name)
-			token := mclient.Publish(topic, byte(0), false, value)
-			if token.Wait() && token.Error() != nil {
-				logger.Error("Fail to publish, %v", token.Error())
-			}
+			publish(mclient, topic, byte(0), false, value)
 		}
 	}
 }

@@ -57,3 +57,29 @@ func TestDecodeDoesNotBlockOnLostPublishToken(t *testing.T) {
 		t.Fatal("nothing published")
 	}
 }
+
+func TestExtraDecodeDoesNotBlockOnLostPublishToken(t *testing.T) {
+	savedTimeout := publishTimeout
+	publishTimeout = time.Millisecond
+	defer func() { publishTimeout = savedTimeout }()
+	actDataExtraMu.Lock()
+	for k := range actDataExtra {
+		actDataExtra[k] = "unset"
+	}
+	actDataExtraMu.Unlock()
+
+	c := &stuckClient{}
+	done := make(chan struct{})
+	go func() {
+		decode_heatpump_data_extra(make([]byte, 203), c)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("decode_heatpump_data_extra still blocked after %d publishes", c.publishes)
+	}
+	if c.publishes == 0 {
+		t.Fatal("nothing published")
+	}
+}
