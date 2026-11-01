@@ -48,6 +48,12 @@ var commandsMu sync.Mutex
 // actData is accessed by the serial reader and refresh goroutine.
 var actData = make([]string, len(AllTopics))
 var actDataMu sync.Mutex
+
+// publishTimeout bounds the wait for a publish token. paho v1.5.0 can lose a
+// QoS 0 token when the connection drops (eclipse-paho/paho.mqtt.golang#798),
+// and an endless Wait() there stops the serial reader for good.
+var publishTimeout = time.Second
+
 var config Config
 var serialComms *serial.Comms
 var err error
@@ -184,7 +190,6 @@ func UpdateConfigLoop(configfile string) {
 }
 
 func PublishTopicsToAutoDiscover(mclient mqtt.Client) {
-	var token mqtt.Token
 	for k, v := range AllTopics {
 		var m AutoDiscoverStruct
 		m.UID = fmt.Sprintf("Aquarea-%s-%d", config.MqttLogin, k)
@@ -218,10 +223,7 @@ func PublishTopicsToAutoDiscover(mclient mqtt.Client) {
 		}
 		TOP := fmt.Sprintf("%s/%s/%s/config", config.Mqtt_topic_base, v.TopicType, strings.ReplaceAll(m.Name, " ", "_"))
 		logger.Info("It publishes to %s warosc %s", TOP, string(Topic_Value))
-		token = mclient.Publish(TOP, byte(0), false, Topic_Value)
-		if token.Wait() && token.Error() != nil {
-			logger.Error("Fail to publish: %v", token.Error())
-		}
+		publish(mclient, TOP, byte(0), false, Topic_Value)
 
 	}
 
@@ -239,10 +241,7 @@ func PublishTopicsToAutoDiscover(mclient mqtt.Client) {
 		}
 		TOP := fmt.Sprintf("%s/%s/%s/config", config.Mqtt_topic_base, "switch", strings.ReplaceAll(vs.Name, " ", "_"))
 		logger.Info("It publishes to %s warosc %s", TOP, string(Topic_Value))
-		token = mclient.Publish(TOP, byte(0), false, Topic_Value)
-		if token.Wait() && token.Error() != nil {
-			logger.Error("Fail to publish: %v", token.Error())
-		}
+		publish(mclient, TOP, byte(0), false, Topic_Value)
 	}
 
 }
@@ -588,10 +587,7 @@ func HandleOSCommand(mclient mqtt.Client, msg mqtt.Message) {
 	comout := fmt.Sprintf("%s - %s", out, out2)
 	TOP := fmt.Sprintf("%s/OSCommand/out", config.Mqtt_set_base)
 	logger.Info("Published to %s warosc %s", TOP, string(comout))
-	token := mclient.Publish(TOP, byte(0), false, comout)
-	if token.Wait() && token.Error() != nil {
-		logger.Error("Fail to publish, %v", token.Error())
-	}
+	publish(mclient, TOP, byte(0), false, comout)
 
 }
 
@@ -899,6 +895,18 @@ type serialAvailability struct {
 	initialized bool
 	online bool
 	lastLosses uint64
+}
+
+// publish sends a message and waits at most publishTimeout for the token.
+func publish(client mqtt.Client, topic string, qos byte, retained bool, payload interface{}) {
+	token := client.Publish(topic, qos, retained, payload)
+	if !token.WaitTimeout(publishTimeout) {
+		logger.Error("Publish to %s timed out after %v", topic, publishTimeout)
+		return
+	}
+	if err := token.Error(); err != nil {
+		logger.Error("Fail to publish: %v", err)
+	}
 }
 
 func publishSerialStatus(client mqtt.Client, status string) {
@@ -1220,17 +1228,11 @@ func decode_heatpump_data(data []byte, mclient mqtt.Client) {
 				TOP := "aquarea/state/" + fmt.Sprintf("%s/%s", config.Aquarea2mqttPumpID, v.TopicA2M)
 				value := strings.ToUpper(strings.TrimSpace(Topic_Value))
 				logger.Info("It publishes to %s warosc %s", TOP, string(value))
-				token := mclient.Publish(TOP, byte(0), false, value)
-				if token.Wait() && token.Error() != nil {
-					logger.Error("Fail to publish, %v", token.Error())
-				}
+				publish(mclient, TOP, byte(0), false, value)
 			}
 			TOP := fmt.Sprintf("%s/%s", config.Mqtt_topic_base, v.TopicName)
 			logger.Info("It publishes to %s warosc %s", TOP, string(Topic_Value))
-			token := mclient.Publish(TOP, byte(0), false, Topic_Value)
-			if token.Wait() && token.Error() != nil {
-				logger.Error("Fail to publish, %v", token.Error())
-			}
+			publish(mclient, TOP, byte(0), false, Topic_Value)
 
 		}
 
