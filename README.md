@@ -49,7 +49,7 @@ Goals:
   Panasonic `fwupdate uci-load` (S09fw) wipes `/etc/config`, which hides the image's `dropbear`
   and `uhttpd` configs; LuCI works again after `cp /rom/etc/config/uhttpd /etc/config/`.
 
-# What's running on my Aquarea (as of 2026-10-13)
+# What's running on my Aquarea (as of 2026-11-01)
 
 * **Firmware:** lsochanowski-based firmware from
   [wip/lsochanowski](https://github.com/piomar123/GoHeishaMon/tree/wip/lsochanowski)
@@ -58,20 +58,23 @@ Goals:
   must stay below ~1.8 MB.
 * **Service scripts (overlay):** from
   [feat/lsochanowski/procd-service](https://github.com/piomar123/GoHeishaMon/tree/feat/lsochanowski/procd-service)
-  at ddd9db8 - GoHeishaMon runs as a procd service (`/etc/init.d/goheishamon`, started from
-  rc.local), respawned 30 s after it exits; after an abnormal exit the syslog is saved to
-  `/tmp/goheishamon-crashes/`. Logs: `logread | grep goheisha`. `check_buttons.sh` blinks the
-  bottom LED (1 s on, 1 s off) while packets arrive from the heat pump and lights the middle
-  LED white while GoHeishaMon runs.
-* **App (testing from RAM since 2026-10-10):** [deploy/aquarea](https://github.com/piomar123/GoHeishaMon/tree/deploy/aquarea)
-  at 8589412 - pando85 main with the serial link recovery and command order fixes (#9), go1.24
-  pin and heartbeat file. Runs outside the service until it moves to the overlay.
-* **App (overlay, since 2026-10-09; started by the service after a reboot):**
-  [fix/pando/races-and-deps](https://github.com/piomar123/GoHeishaMon/tree/fix/pando/races-and-deps)
-  at d4d3d3f - newest pando (1.2.0 + HA template fix) with data race fixes (the previous app
-  crashed with memory corruption after ~56 h), updated dependencies, built with go1.24 +
-  UPX 4.2.4, plus a heartbeat file (`/tmp/goheishamon.packet`) touched on every heat-pump packet.
-  The same code without the heartbeat (19f178d) ran 7 days from RAM without a crash.
+  - GoHeishaMon runs as a procd service (`/etc/init.d/goheishamon`, started from rc.local),
+  respawned 30 s after it exits; after an abnormal exit the syslog is saved to
+  `/tmp/goheishamon-crashes/`. Logs: `logread | grep goheisha`. `goheishamon-run.sh` (fa72a91)
+  runs the app with `GODEBUG=asyncpreemptoff=1`: Go's async preemption signals corrupt the heap
+  now and then on this kernel (3.14, MIPS 24Kc), as in
+  [golang/go#58212](https://github.com/golang/go/issues/58212). `check_buttons.sh` (ddd9db8)
+  blinks the bottom LED (1 s on, 1 s off) while packets arrive from the heat pump and lights the
+  middle LED white while GoHeishaMon runs.
+* **App (overlay, since 2026-11-01):** [deploy/aquarea](https://github.com/piomar123/GoHeishaMon/tree/deploy/aquarea)
+  at a6beb08 - pando85 main (561bcc8) with the missing topics (TOP95-143, decoding fixes), a
+  heartbeat file (`/tmp/goheishamon.packet`) touched on every heat-pump packet, the read
+  statistics log fix, and a 1 s limit on waiting for MQTT publish tokens (paho v1.5.0 can lose
+  a QoS 0 token when the connection drops and the serial reader then blocked for good). Built
+  with go1.24 + UPX 4.2.4.
+* **Earlier apps:** [fix/pando/races-and-deps](https://github.com/piomar123/GoHeishaMon/tree/fix/pando/races-and-deps)
+  d4d3d3f (overlay 2026-10-09 to 2026-11-01), deploy/aquarea 19c5d11 (from RAM; crashed 3 times
+  with async preemption on, then ran 13 days with it off).
 * **Previous app:** [pando85/GoHeishaMon](https://github.com/pando85/GoHeishaMon) at `aec71c1`
   (before the serial rewrite in 1.2.0), built with the newer dependencies from wip/lsochanowski
   (867e7c4) - a local build that was never committed.
