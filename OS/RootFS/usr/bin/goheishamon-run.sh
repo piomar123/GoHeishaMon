@@ -9,6 +9,10 @@ CRASH_DIR=/tmp/goheishamon-crashes
 KEEP=10
 FIFO=/tmp/goheishamon.$$.fifo
 
+# Go's async preemption (SIGURG) corrupts the heap now and then on this kernel (3.14,
+# MIPS 24Kc): 3 crashes in ~104 h with it, none in 13 days without; same as golang/go#58212.
+export GODEBUG="${GODEBUG:+$GODEBUG,}asyncpreemptoff=1"
+
 stopping=0
 pid=
 on_term() {
